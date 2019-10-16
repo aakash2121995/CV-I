@@ -25,7 +25,7 @@ def cal_integral(img):
 
 if __name__ == '__main__':
     # img_path = sys.argv[1]
-    img_path = "../src/bonn.png"
+    img_path = "../images/bonn.png"
     img = cv.imread(img_path, flags=cv.IMREAD_GRAYSCALE)
 
 
@@ -34,14 +34,45 @@ if __name__ == '__main__':
 #    =========================================================================
     print('Task 1:');
     # int = cv.integral(img)
+    # a)
     integral = cal_integral(img)
-    normalise_int = (255.0 * (integral - integral.min() / (integral.max() - integral.min()))).astype(np.uint8)
+    normalise_int = (255.0 * (integral /integral.max() )).astype(np.uint8)
     display_image("Integral Img", normalise_int)
 
+    # b)
+    print("Mean pixel value by summing up each pixel value in the image: " ,img.sum()/(img.shape[0]*img.shape[1]))
+    print("Mean pixel value by computing an integral image using the function cv.integral: ", cv.integral(img)[-1,-1]/ (img.shape[0] * img.shape[1]))
+    print("Mean pixel value by computing an integral image with own function,: ", cal_integral(img)[-1,-1] / (img.shape[0] * img.shape[1]))
 
+    # c)
+    PATCH_SIZE = 100
+    time_pixel_wise, time_cv_func, time_own_func = 0, 0, 0
+    for i in range(10):
+        rand_coord = random.randint(0, img.shape[0] - PATCH_SIZE), random.randint(0, img.shape[1] - PATCH_SIZE)
+        patch = img[rand_coord[0]:rand_coord[0]+PATCH_SIZE, rand_coord[1]:rand_coord[1]+PATCH_SIZE]
 
+        start = time.time()
+        val = patch.sum()/(PATCH_SIZE*PATCH_SIZE)
+        end = time.time()
+        time_pixel_wise += end-start
 
-#    =========================================================================
+        start = time.time()
+        val = cv.integral(patch)[-1,-1] / (PATCH_SIZE * PATCH_SIZE)
+        end = time.time()
+        time_cv_func += end - start
+
+        start = time.time()
+        val = cal_integral(patch)[-1,-1]/ (PATCH_SIZE * PATCH_SIZE)
+        end = time.time()
+        time_own_func += end - start
+
+    print("\nTime taken by summing up each pixel value in the image: ", time_pixel_wise)
+    print("Time taken by computing an integral image using the function cv.integral: ",
+          time_cv_func)
+    print("Time taken by computing an integral image with own function,: ",
+          time_own_func)
+    print()
+    #    =========================================================================
 #    ==================== Task 2 =================================
 #    =========================================================================
     print('Task 2:');
