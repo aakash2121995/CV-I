@@ -23,6 +23,36 @@ def cal_integral(img):
             int_[i+1, j+1] = int_[i, j+1] + int_[i+1,j] - int_[i, j] + img[i, j]
     return int_
 
+def get_pixel_error(source, target):
+    """
+    Computes pixel wise absolute difference between source and target image
+    :param source: original image
+    :param target: resulting image after processing
+    :return: pixel-wise difference and maximum pixel error
+    """
+    pixel_error = np.absolute(source - target)
+    return pixel_error, np.max(pixel_error)
+    
+def get_cdf(img):
+    """
+    Computes cumulative distribution function of the image
+    :param img: original image
+    :return: cumulative distribution function of the image
+    """
+    hist, _ = np.histogram(img.flatten(),256,[0,256])
+    return hist.cumsum()
+
+def histogram_equalization(img):
+    """
+    Computes histogram equalization of the image
+    :param img: original image
+    :return: histogram equalization of the image
+    """
+    cdf = get_cdf(img)
+    cdf_masked = np.ma.masked_equal(cdf, 0)
+    equalizedHist = (cdf_masked - cdf_masked.min())*255/(cdf_masked.max()-cdf_masked.min())
+    equalizedHist = np.ma.filled(equalizedHist, 0).astype('uint8')
+    return equalizedHist[img]
 
 def gaussian_kernel2D(size=15, sigma=5):
     ax = np.arange(-(size // 2 ), size // 2 + 1)
@@ -88,13 +118,20 @@ if __name__ == '__main__':
 #    ==================== Task 2 =================================
 #    =========================================================================
     print('Task 2:');
+    #get a copy of the image
     img_cpy = np.copy(img)
-    cv.equalizeHist(img_cpy)
-    display_image('2 - a - Histogram Equalization', img_cpy)
+    #histogram equalization of the image using function provided by OpenCV
+    img_equalizedHist_cv = cv.equalizeHist(img_cpy)
+    display_image('2 - a - Histogram Equalization by OpenCV', img_equalizedHist_cv)
+    #histogram equalization of the image by our implementation
+    img_equalizedHist_custom = histogram_equalization(img_cpy)
+    display_image('2 - a - Histogram Equalization by Custom Implementation', img_equalizedHist_custom)
     
-
-
-
+    #calculate absolute pixel wise differnce
+    pixel_error, max_pixel_error = get_pixel_error(img_equalizedHist_cv, img_equalizedHist_custom)
+    #print the maximum pixel error
+    print('Maximum pixel error for Histogram Equalization: {}'.format(max_pixel_error))
+    
 #    =========================================================================
 #    ==================== Task 4 =================================
 #    =========================================================================
