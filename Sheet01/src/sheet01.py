@@ -23,6 +23,18 @@ def cal_integral(img):
             int_[i+1, j+1] = int_[i, j+1] + int_[i+1,j] - int_[i, j] + img[i, j]
     return int_
 
+
+def gaussian_kernel2D(size=15, sigma=5):
+    ax = np.arange(-(size // 2 ), size // 2 + 1)
+    xx, yy = np.meshgrid(ax, ax)
+    kernel = np.exp(-(xx ** 2 + yy ** 2) / (2. * sigma ** 2))
+    return kernel / np.sum(kernel)
+
+def gaussian_kernel1D(size=15, sigma=5):
+    allnum = np.linspace(-(size // 2), size // 2, size)
+    gaus = np.exp(-0.5 * ((allnum / sigma) ** 2))
+    return (gaus / gaus.sum())
+
 if __name__ == '__main__':
     # img_path = sys.argv[1]
     img_path = "../src/bonn.png"
@@ -45,8 +57,10 @@ if __name__ == '__main__':
 #    ==================== Task 2 =================================
 #    =========================================================================
     print('Task 2:');
-
-
+    img_cpy = np.copy(img)
+    cv.equalizeHist(img_cpy)
+    display_image('2 - a - Histogram Equalization', img_cpy)
+    
 
 
 
@@ -55,7 +69,51 @@ if __name__ == '__main__':
 #    =========================================================================
     print('Task 4:');
 
-
+    #get a copy of the image
+    img_cpy = np.copy(img)
+    #set sigma
+    sigma = 2*np.sqrt(2)
+    
+    #########################     Gaussian Blur    ############################
+    #apply gaussian blur on the image and display the result
+    #ksize set to (0,0) to get them calculated from sigma
+    img_gaussian_blurred = cv.GaussianBlur(img_cpy, (0, 0), sigma, 0)       
+    display_image('4 - a - Gaussian Blur', img_gaussian_blurred)
+    #calculate absolute pixel wise differnce
+    pixel_error = np.absolute(img - img_gaussian_blurred)
+    #print the maximum pixel error
+    print('Maximum pixel error for Gaussian Blur: {}'.format(np.max(pixel_error)))
+    
+    
+    #########################     Filter2D     ################################
+    #calculate the kernel of size 15 x 15
+    kernel = gaussian_kernel2D(size=15, sigma=sigma)
+    #container for output image
+    img_filtered_2d = img_cpy
+    #apply filter2D on the image and display the result
+    cv.filter2D(src=img, dst=img_filtered_2d, ddepth=-1, kernel=kernel)
+    display_image('4 - b - Filter2D', img_filtered_2d)
+    #calculate absolute pixel wise differnce
+    pixel_error = np.absolute(img - img_filtered_2d)
+    #print the maximum pixel error
+    print('Maximum pixel error for Filter2D: {}'
+          .format(np.max(pixel_error)))
+    
+    
+    #########################     Seperate Filter2D    ########################
+    #calculate the kernel of size 15 x 1
+    kernel = gaussian_kernel1D(size=15, sigma=2)
+    #container for output image
+    img_sepFiltered_2d = img_cpy
+    #apply seperate filter2D on the image and display the result
+    cv.sepFilter2D(src=img, dst=img_sepFiltered_2d, ddepth=-1, kernelX=kernel, 
+                   kernelY=kernel)
+    display_image('4 - c - Seperate Filter2D', img_sepFiltered_2d)
+    #calculate absolute pixel wise differnce
+    pixel_error = np.absolute(img - img_sepFiltered_2d)
+    #print the maximum pixel error
+    print('Maximum pixel error for Seperate Filter2D: {}'
+          .format(np.max(pixel_error)))
 
 
 
