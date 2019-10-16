@@ -78,11 +78,11 @@ if __name__ == '__main__':
     # int = cv.integral(img)
     # a)
     integral = cal_integral(img)
-    normalise_int = (255.0 * (integral /integral.max() )).astype(np.uint8)
-    display_image("Integral Img", normalise_int)
+    normalise_int = (255.0 * (integral /integral.max())).astype(np.uint8)
+    display_image("1 - a Integral Image", normalise_int)
 
     # b)
-    print("Mean pixel value by summing up each pixel value in the image: " ,img.sum()/(img.shape[0]*img.shape[1]))
+    print("Mean pixel value by summing up each pixel value in the image: ", img.sum()/(img.shape[0]*img.shape[1]))
     print("Mean pixel value by computing an integral image using the function cv.integral: ", cv.integral(img)[-1,-1]/ (img.shape[0] * img.shape[1]))
     print("Mean pixel value by computing an integral image with own function,: ", cal_integral(img)[-1,-1] / (img.shape[0] * img.shape[1]))
 
@@ -183,9 +183,19 @@ if __name__ == '__main__':
     print('Maximum pixel error for Seperate Filter2D: {}'
           .format(np.max(pixel_error)))
 
+    #    =========================================================================
+    #    ==================== Task 5 =================================
+    #    =========================================================================
+    print('Task 5:');
 
+    img_gaussian_twice = cv.GaussianBlur(cv.GaussianBlur(img, (0, 0), 2, 0) , (0, 0), 2, 0)
+    img_gaussian_once = cv.GaussianBlur(img, (0, 0), 2*np.sqrt(2), 0)
+    display_image("5 - a Twice with a Gaussian kernel with sigma = 2",img_gaussian_twice)
+    display_image("5 - b once with a Gaussian kernel with sigma = 2root2",img_gaussian_once)
+    abs_diff = np.abs(img_gaussian_twice - img_gaussian_once)
 
-#    =========================================================================
+    print("Maximum pixel error: ", abs_diff.max())
+    #    =========================================================================
 #    ==================== Task 6 =================================
 #    =========================================================================
     print('Task 6:');
@@ -198,10 +208,43 @@ if __name__ == '__main__':
 #    ==================== Task 7 =================================
 #    =========================================================================
     print('Task 7:');
+    random_probs = np.random.rand(img.shape[0],img.shape[1])
+    bool_pepper = random_probs <= 0.15
+    bool_salt = np.logical_and(random_probs > 0.15, random_probs <= 0.3)
+    img_cpy = img.copy()
+    img_cpy[bool_pepper] = 255
+    img_cpy[bool_salt] = 0
+    display_image("7 - Noisy image",img_cpy)
 
+    best_diff = 256
+    best_denoised_img = []
+    for filter_size in [1,3,5,7,9]:
+        denoised_img = cv.GaussianBlur(img_cpy, (filter_size, filter_size), 3, 0)
+        if best_diff > np.abs(denoised_img.mean() - img.mean()):
+            best_diff = np.abs(denoised_img.mean() - img.mean())
+            best_denoised_img = denoised_img
 
+    display_image("Denoised Image with gaussian blur",best_denoised_img)
 
+    best_diff = 256
+    best_denoised_img = []
+    for filter_size in [1, 3, 5, 7, 9]:
+        denoised_img = cv.medianBlur(img_cpy,filter_size)
+        if best_diff > np.abs(denoised_img.mean() - img.mean()):
+            best_diff = np.abs(denoised_img.mean() - img.mean())
+            best_denoised_img = denoised_img
 
+    display_image("Denoised Image with Median blur", best_denoised_img)
+
+    best_diff = 256
+    best_denoised_img = []
+    for filter_size in [1, 3, 5, 7, 9]:
+        denoised_img = cv.bilateralFilter(img_cpy, filter_size, 3, 3)
+        if best_diff > np.abs(denoised_img.mean() - img.mean()):
+            best_diff = np.abs(denoised_img.mean() - img.mean())
+            best_denoised_img = denoised_img
+
+    display_image("Denoised Image with Bilateral blur", best_denoised_img)
 
 #    =========================================================================
 #    ==================== Task 8 =================================
