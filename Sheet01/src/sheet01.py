@@ -70,8 +70,8 @@ def gaussian_kernel1D(sigma=5):
     return (gaus / gaus.sum())
 
 if __name__ == '__main__':
-    # img_path = sys.argv[1]
-    img_path = "../images/bonn.png"
+    img_path = sys.argv[1]
+    # img_path = "../images/bonn.png"
     img = cv.imread(img_path, flags=cv.IMREAD_GRAYSCALE)
 
 
