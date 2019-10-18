@@ -66,8 +66,8 @@ def gaussian_kernel1D(size=15, sigma=5):
     return (gaus / gaus.sum())
 
 if __name__ == '__main__':
-    img_path = sys.argv[1]
-    # img_path = "../images/bonn.png"
+    # img_path = sys.argv[1]
+    img_path = "../images/bonn.png"
     img = cv.imread(img_path, flags=cv.IMREAD_GRAYSCALE)
 
 
@@ -260,13 +260,15 @@ if __name__ == '__main__':
     display_image('8 - a - Filtered using Kernel 2', image_filtered)
     w1, u1, v1_t = cv.SVDecomp(kernel_1)
     sigma1 = np.max(w1)
-    u1 = u1[0 : 1][0]
-    v1_t = v1_t[0 : 1][0]
+    # u1 = u1[0, :]
+    # v1_t = v1_t.T[:,]
     #container for output image
     img_sepFiltered_2d = img_cpy
     #apply seperate filter2D on the image and display the result
-    cv.sepFilter2D(src=img, dst=img_sepFiltered_2d, ddepth=-1, kernelX=np.sqrt(sigma1)*v1_t, 
-                   kernelY=np.sqrt(sigma1)*u1)
+    # cv.sepFilter2D(src=img, dst=img_sepFiltered_2d, ddepth=-1, kernelX=np.sqrt(sigma1)*v1_t,
+    #                kernelY=np.sqrt(sigma1)*u1)
+    cv.sepFilter2D(src=img, dst=img_sepFiltered_2d, ddepth=-1, kernelX=np.sqrt(sigma1) * v1_t.T[:, 0],
+                   kernelY=np.sqrt(sigma1) * u1[:, 0])
     display_image('8 - b - Seperate Filter2D with kernel 1', img_sepFiltered_2d)
     #calculate absolute pixel wise differnce
     pixel_error, max_pixel_error = get_pixel_error(img, img_sepFiltered_2d)
@@ -276,14 +278,14 @@ if __name__ == '__main__':
     
     w2, u2, v2_t = cv.SVDecomp(kernel_2)
     sigma2 = np.max(w2)
-    u2 = u2[0 : 1][0]
-    v2_t = v2_t[0 : 1][0]
+    # u2 = u2[0 : 1][0]
+    # v2_t = v2_t[0 : 1][0]
     
     #container for output image
     img_sepFiltered_2d = img_cpy
     #apply seperate filter2D on the image and display the result
-    cv.sepFilter2D(src=img, dst=img_sepFiltered_2d, ddepth=-1, kernelX=np.sqrt(sigma2)*v2_t, 
-                   kernelY=np.sqrt(sigma2)*u2)
+    cv.sepFilter2D(src=img, dst=img_sepFiltered_2d, ddepth=-1, kernelX=np.sqrt(sigma2)*v2_t.T[:, 0],
+                   kernelY=np.sqrt(sigma2)*u2[:, 0])
     display_image('8 - b - Seperate Filter2D with kernel 2', img_sepFiltered_2d)
     #calculate absolute pixel wise differnce
     pixel_error, max_pixel_error = get_pixel_error(img, img_sepFiltered_2d)
