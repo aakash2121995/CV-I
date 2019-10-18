@@ -66,8 +66,8 @@ def gaussian_kernel1D(size=15, sigma=5):
     return (gaus / gaus.sum())
 
 if __name__ == '__main__':
-    # img_path = sys.argv[1]
-    img_path = "../images/bonn.png"
+    img_path = sys.argv[1]
+    # img_path = "../images/bonn.png"
     img = cv.imread(img_path, flags=cv.IMREAD_GRAYSCALE)
 
 
@@ -252,7 +252,7 @@ if __name__ == '__main__':
     print('Task 8:');
     kernel_1 = np.array([[0.0113, 0.0838, 0.0113], [0.0838, 0.6193, 0.0838], [0.0113, 0.0838, 0.0113]])
     kernel_2 = np.array([[-0.8984, 0.1472, 1.1410], [-1.9075, 0.1566, 2.1359], [-0.8659, 0.0573, 1.0337]])
-    get a copy of the image
+    # get a copy of the image
     img_cpy = np.copy(img)
     image_filtered = cv.filter2D(img_cpy, -1, kernel_1)
     display_image('8 - a - Filtered using Kernel 1', image_filtered)
