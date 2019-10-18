@@ -262,15 +262,13 @@ if __name__ == '__main__':
     display_image('8 - a - Filtered using Kernel 1', image_filtered)
     image_filtered = cv.filter2D(img_cpy, -1, kernel_2)
     display_image('8 - a - Filtered using Kernel 2', image_filtered)
+     #decomposing kernel 1
     w1, u1, v1_t = cv.SVDecomp(kernel_1)
+    #taking the max of singular values
     sigma1 = np.max(w1)
-    # u1 = u1[0, :]
-    # v1_t = v1_t.T[:,]
     #container for output image
     img_sepFiltered_2d = img_cpy
     #apply seperate filter2D on the image and display the result
-    # cv.sepFilter2D(src=img, dst=img_sepFiltered_2d, ddepth=-1, kernelX=np.sqrt(sigma1)*v1_t,
-    #                kernelY=np.sqrt(sigma1)*u1)
     cv.sepFilter2D(src=img, dst=img_sepFiltered_2d, ddepth=-1, kernelX=np.sqrt(sigma1) * v1_t.T[:, 0],
                    kernelY=np.sqrt(sigma1) * u1[:, 0])
     display_image('8 - b - Seperate Filter2D with kernel 1', img_sepFiltered_2d)
@@ -279,12 +277,9 @@ if __name__ == '__main__':
     #print the maximum pixel error
     print('Maximum pixel error for Seperate Filter2D with kernel 1: {}'
           .format(max_pixel_error))
-    
+    #decomposing kernel 2
     w2, u2, v2_t = cv.SVDecomp(kernel_2)
     sigma2 = np.max(w2)
-    # u2 = u2[0 : 1][0]
-    # v2_t = v2_t[0 : 1][0]
-    
     #container for output image
     img_sepFiltered_2d = img_cpy
     #apply seperate filter2D on the image and display the result
@@ -296,9 +291,6 @@ if __name__ == '__main__':
     #print the maximum pixel error
     print('Maximum pixel error for Seperate Filter2D with kernel 2: {}'
           .format(max_pixel_error))
-    
-
-
 
 
 
