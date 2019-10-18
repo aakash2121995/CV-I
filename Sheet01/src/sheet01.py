@@ -54,13 +54,17 @@ def histogram_equalization(img):
     equalizedHist = np.ma.filled(equalizedHist, 0).astype('uint8')
     return equalizedHist[img]
 
-def gaussian_kernel2D(size=15, sigma=5):
+def gaussian_kernel2D(sigma=5):
+    halfSize = 3 * sigma
+    size = 2 * halfSize + 1 
     ax = np.arange(-(size // 2 ), size // 2 + 1)
     xx, yy = np.meshgrid(ax, ax)
     kernel = np.exp(-(xx ** 2 + yy ** 2) / (2. * sigma ** 2))
     return kernel / np.sum(kernel)
 
-def gaussian_kernel1D(size=15, sigma=5):
+def gaussian_kernel1D(sigma=5):
+    halfSize = 3 * sigma
+    size = 2 * halfSize + 1 
     allnum = np.linspace(-(size // 2), size // 2, size)
     gaus = np.exp(-0.5 * ((allnum / sigma) ** 2))
     return (gaus / gaus.sum())
@@ -155,7 +159,7 @@ if __name__ == '__main__':
     
     #########################     Filter2D     ################################
     #calculate the kernel of size 15 x 15
-    kernel = gaussian_kernel2D(size=15, sigma=sigma)
+    kernel = gaussian_kernel2D(sigma=sigma)
     #container for output image
     img_filtered_2d = img_cpy
     #apply filter2D on the image and display the result
@@ -170,7 +174,7 @@ if __name__ == '__main__':
     
     #########################     Seperate Filter2D    ########################
     #calculate the kernel of size 15 x 1
-    kernel = gaussian_kernel1D(size=15, sigma=2)
+    kernel = gaussian_kernel1D(sigma=2)
     #container for output image
     img_sepFiltered_2d = img_cpy
     #apply seperate filter2D on the image and display the result
