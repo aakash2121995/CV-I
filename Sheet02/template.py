@@ -19,6 +19,11 @@ def display_image(window_name, img):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+def display_rect(label,result,image,template):
+    indexes = np.unravel_index(result.argmax(), result.shape)
+    cv2.rectangle(image, indexes, (indexes[0] + template.shape[0], indexes[1] + template.shape[1]),
+                  color=(200, 0, 0,), thickness=1)
+    display_image(label, image)
 
 def get_convolution_using_fourier_transform(image, kernel):
     '''fft_kernel = np.fft.fft2(kernel, s=image.shape[:2], axes=(0, 1))
@@ -39,7 +44,7 @@ def get_convolution_using_fourier_transform(image, kernel):
     l, w = image.shape[0] + kernel.shape[0] - 1, image.shape[1] + kernel.shape[1] - 1
     fft_image = np.fft.fft2(image, [l, w])
     fft_kernel = np.fft.fft2(kernel, [l, w])
-    result = np.fft.ifft2(np.multiply(fft_image.real, fft_kernel.real))
+    result = np.real(np.fft.ifft2(np.multiply(fft_image, fft_kernel)))
     return result.real
 
 def task1():
@@ -55,7 +60,7 @@ def task1():
     # apply filter2D on the image and display the result
     cv2.filter2D(src=image, dst=conv_result, ddepth=-1, kernel=kernel)
     display_image('1 - a - Gaussian Blur with Filter2D', conv_result)
-    fft_result = get_convolution_using_fourier_transform(image, kernel)
+    fft_result = get_convolution_using_fourier_transform(image, kernel).astype(np.uint8)
     display_image('1 - a - Gaussian Blur with Fourier Transform', fft_result)
 
     # compare results
@@ -70,11 +75,6 @@ def sum_square_difference(image, template):
             squared_diff = np.square(patch - template)
             output_image[i, j] = squared_diff.sum()
 
-    # min_ = output_image.min()
-    # max_ = output_image.max()
-    # range_ = max_ - min_
-    # output_image = 255 * ((output_image - min_) / range_)
-    # output_image = output_image.astype(np.uint8)
     return output_image
 
 
@@ -93,32 +93,29 @@ def normalized_cross_correlation(image, template):
             deno = np.sqrt(squared_sum_template * np.square(mean_norm_patch).sum())
             output_image[i, j] = numerator / deno
 
-    # min_ = output_image.min()
-    # max_ = output_image.max()
-    # range_ = max_ - min_
-    # output_image = 255 * ((output_image - min_) / range_)
-    # output_image = output_image.astype(np.uint8)
     return output_image
+
 
 
 def task2():
     image = cv2.imread("data/lena.png", 0)
     template = cv2.imread("data/eye.png", 0)
 
+    img_cpy = image.copy()
     result_ssd = sum_square_difference(image, template)
-    img_cpy = image.copy()
-    indexes = np.unravel_index(result_ssd.argmax(),result_ssd.shape)
-    cv2.rectangle(img_cpy,indexes,(indexes[0]+template.shape[0], indexes[1]+template.shape[1]),color=(200,0,0,),thickness=1)
-    display_image("sum", img_cpy)
+    display_rect("2 - Own Sum Square Differece", result_ssd, img_cpy, template)
+
+    img_cpy=image.copy()
     result_ncc = normalized_cross_correlation(image, template)
+    display_rect("2 - Own NCC", result_ncc, img_cpy, template)
+
     img_cpy = image.copy()
-    indexes = np.unravel_index(result_ncc.argmax(), result_ncc.shape)
-    cv2.rectangle(img_cpy, indexes, (indexes[0] + template.shape[0], indexes[1] + template.shape[1]),
-                  color=(200, 0, 0,), thickness=1)
-    display_image("sum", img_cpy)
-    # display_image("sum", result_ncc)
-    # result_cv_sqdiff = cv2.  # calculate using opencv
-    result_cv_ncc = None  # calculate using opencv
+    result_cv_sqdiff = cv2.matchTemplate(image, template, method=cv2.TM_SQDIFF)  # calculate using opencv
+    display_rect("2 - CV Sum Squared Differences", result_cv_sqdiff, img_cpy, template)
+
+    img_cpy = image.copy()
+    result_cv_ncc = cv2.matchTemplate(image,template,method=cv2.TM_CCORR_NORMED) # calculate using opencv
+    display_rect("2 - CV NCC", result_cv_ncc, img_cpy, template)
 
     # draw rectangle around found location in all four results
     # show the results
@@ -173,25 +170,65 @@ def task4():
     magnitude = (255*magnitude/magnitude.max()).astype(np.uint8)
     direction = (255*direction/direction.max()).astype(np.uint8)
 
-    cv2.imshow("Magnitude", magnitude)
-    cv2.imshow("Direction", direction)
+    display_image("Magnitude", magnitude)
+    display_image("Direction", direction)
 
+def l2_distance_transform_1D(column,positive_inf,negative_inf):
+    k = 0
+    v = np.empty(column.shape[0]).astype(int)
+    v[0] = 0
+    z = np.empty(column.shape[0]).astype(int)
+    z[0] = negative_inf
+    z[1] = positive_inf
+
+    output = np.empty_like(column)
+
+    for q in range(1,column.shape[0]):
+        while True:
+            s = (column[q] + q*q - (column[v[k]] + v[k]**2))/(2*q-2*v[k])
+            if s > z[k]:
+                break
+            k = k-1
+        k = k+1
+        v[k] = q
+        z[k] = s
+        z[k+1] = positive_inf
+
+    k = 0
+
+    for q in range(column.shape[0]):
+        while z[k+1] < q:
+            k = k+1
+        output[q] = (q-v[k])**2 + column[v[k]]
+
+    return output
 
 def l2_distance_transform_2D(edge_function, positive_inf, negative_inf):
-    return None
+    for row_ind in range(edge_function.shape[0]):
+        edge_function[row_ind,:] = l2_distance_transform_1D(edge_function[row_ind,:] ,positive_inf,negative_inf)
 
+    for col_ind in range(edge_function.shape[1]):
+        edge_function[:,col_ind] = l2_distance_transform_1D(edge_function[:,col_ind],positive_inf,negative_inf)
+
+    return edge_function
 
 def task5():
     image = cv2.imread("data/traffic.jpg", 0)
 
     edges = cv2.Canny(image,100,200)  # compute edges
-    edge_function = None  # prepare edges for distance transform
+    display_image("5 - a Edges", edges)
+    edges = edges.astype(np.int64)
+    edges[(edges == 0)] = 10**10
+    edges[(edges == 255)] = 0
+    edges[(edges == 10**10)] = 1
+    edges = edges.astype(np.uint8)
+    edge_function = edges  # prepare edges for distance transform
 
     dist_transfom_mine = l2_distance_transform_2D(
-        edge_function, positive_inf, negative_inf
+        edge_function, 999999, -999999
     )
-    dist_transfom_cv = None  # compute using opencv
-
+    dist_transfom_cv = cv2.distanceTransform(edge_function,distanceType=cv2.DIST_L2, maskSize=3)  # compute using opencv
+    display_image("Display Transform",dist_transfom_cv)
     # compare and print mean absolute difference
 
 
@@ -201,3 +238,4 @@ if __name__ == "__main__":
     # task3()
     #task4()
     #task5()
+
