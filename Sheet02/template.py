@@ -1,7 +1,13 @@
 import cv2
 import numpy as np
 import time
+import matplotlib.pyplot as plt
 
+def gaussian_kernel2D(size = 15, sigma=5):
+    ax = np.arange(-(size // 2 ), size // 2 + 1)
+    xx, yy = np.meshgrid(ax, ax)
+    kernel = np.exp(-(xx ** 2 + yy ** 2) / (2. * sigma ** 2))
+    return kernel / np.sum(kernel)
 
 def display_image(window_name, img):
     """
@@ -15,15 +21,42 @@ def display_image(window_name, img):
 
 
 def get_convolution_using_fourier_transform(image, kernel):
-    return None
+    '''fft_kernel = np.fft.fft2(kernel, s=image.shape[:2], axes=(0, 1))
 
+    # convolve
+    fft_image = np.fft.fft2(image, axes=(0, 1))
+    fft_image_new = fft_kernel * fft_image
+    filtered_image = np.fft.ifft2(fft_image_new, axes=(0, 1)).real
+
+    # clip values to range
+    filtered_image = np.clip(filtered_image, 0, 1)
+    sz = (image.shape[0] - kernel.shape[0], image.shape[1] - kernel.shape[1])  # total amount of padding
+    kernel = np.pad(kernel, (((sz[0] + 1) // 2, sz[0] // 2), ((sz[1] + 1) // 2, sz[1] // 2)), 'constant')
+    kernel = np.fft.ifftshift(kernel)
+
+    filtered_image = np.real(np.fft.ifft2(np.fft.fft2(image) * np.fft.fft2(kernel)))
+    return filtered_image'''
+    l, w = image.shape[0] + kernel.shape[0] - 1, image.shape[1] + kernel.shape[1] - 1
+    fft_image = np.fft.fft2(image, [l, w])
+    fft_kernel = np.fft.fft2(kernel, [l, w])
+    result = np.fft.ifft2(np.multiply(fft_image.real, fft_kernel.real))
+    return result.real
 
 def task1():
-    image = cv2.imread("../data/einstein.jpeg", 0)
-    kernel = None  # calculate kernel
-
-    conv_result = None  # calculate convolution of image and kernel
+    image = cv2.imread("data/einstein.jpeg", 0)
+    display_image('Task - 1: Original Image', image)
+    # calculate kernel
+    #kernel = cv2.getGaussianKernel(ksize=7, sigma=1, ktype=cv2.CV_64F)
+    kernel = gaussian_kernel2D(7, 1)
+    print(kernel.shape)
+    # calculate convolution of image and kernel
+    # container for output image
+    conv_result = image
+    # apply filter2D on the image and display the result
+    cv2.filter2D(src=image, dst=conv_result, ddepth=-1, kernel=kernel)
+    display_image('1 - a - Gaussian Blur with Filter2D', conv_result)
     fft_result = get_convolution_using_fourier_transform(image, kernel)
+    display_image('1 - a - Gaussian Blur with Fourier Transform', fft_result)
 
     # compare results
 
@@ -163,8 +196,8 @@ def task5():
 
 
 if __name__ == "__main__":
-    # task1()
-    task2()
+    task1()
+    #task2()
     # task3()
-    task4()
-    task5()
+    #task4()
+    #task5()
