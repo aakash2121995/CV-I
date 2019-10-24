@@ -126,7 +126,12 @@ def task2():
 
 
 def build_gaussian_pyramid_opencv(image, num_levels):
-    return None
+    gaussian_pyramid = [image]
+    G = image.copy()
+    for i in range(num_levels):
+        G = cv2.pyrDown(G)
+        gaussian_pyramid.append(G)
+    return gaussian_pyramid
 
 
 def build_gaussian_pyramid(image, num_levels, sigma):
@@ -138,17 +143,25 @@ def template_matching_multiple_scales(pyramid, template):
 
 
 def task3():
-    image = cv2.imread("../data/traffic.jpg", 0)
-    template = cv2.imread("../data/template.jpg", 0)
-
-    cv_pyramid = build_gaussian_pyramid_opencv(image, 8)
-    mine_pyramid = build_gaussian_pyramid(image, 8)
+    image = cv2.imread("data/traffic.jpg", 0)
+    template = cv2.imread("data/traffic-template.png", 0)
+    #display_image('template', template)
+    cv_pyramid = build_gaussian_pyramid_opencv(image, 4)
+    #mine_pyramid = build_gaussian_pyramid(image, 8)
 
     # compare and print mean absolute difference at each level
-    result = template_matching_multiple_scales(pyramid, template)
-
+    #result = template_matching_multiple_scales(pyramid, template)
+    #for i in range(4):
+        #display_image('level - {}'.format(i+1), cv_pyramid[i])
     # show result
-
+    img_cpy = image.copy()
+    w, h = template.shape[::-1]
+    result_ncc = normalized_cross_correlation(image, template)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result_ncc)
+    top_left = max_loc
+    bottom_right = (top_left[0] + w, top_left[1] + h)
+    cv2.rectangle(img_cpy, top_left, bottom_right, 255, 1)
+    display_image('Template', img_cpy)
 
 def get_derivative_of_gaussian_kernel(size, sigma):
     kernel = cv2.getGaussianKernel(size, sigma, )
@@ -243,8 +256,8 @@ def task5():
 
 
 if __name__ == "__main__":
-    task1()
-    # task2()
-    # task3()
+    #task1()
+    #task2()
+    task3()
     # task4()
     # task5()
