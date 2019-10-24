@@ -236,28 +236,32 @@ def l2_distance_transform_2D(edge_function, positive_inf, negative_inf):
 
 def task5():
     image = cv2.imread("data/traffic.jpg", 0)
-    edges = cv2.Canny(image,100,255)  # compute edges
+
+    edges = cv2.Canny(image, 100, 200)  # compute edges
     display_image("5 - a Edges", edges)
-    edges = ~edges
+    edges = edges.astype(np.int64)
+    edges[(edges == 0)] = 10 ** 10
+    edges[(edges == 255)] = 0
+    edges[(edges == 10 ** 10)] = 1
+    edges = edges.astype(np.uint8)
+    edge_function = edges  # prepare edges for distance transform
 
-    dist_transfom_mine = l2_distance_transform_2D(
-        edges.copy(), 99999, -99999
-    )
+    #dist_transfom_mine = l2_distance_transform_2D(
+    #   edge_function, 999999, -999999
+    #)
 
-    dist_transfom_cv = cv2.distanceTransform(edges,distanceType=cv2.DIST_L2, maskSize=5)  # compute using opencv
-    dist_transfom_cv_display = 255*(dist_transfom_cv - dist_transfom_cv.min())/(dist_transfom_cv.max()-dist_transfom_cv.min())
-
-    display_image("Display Transform from Open CV",dist_transfom_cv_display.astype(np.uint8))
-    display_image("Display Transform from own function", dist_transfom_mine.astype(np.uint8))
-    
+    _, bw = cv2.threshold(image, 40, 255, cv2.THRESH_BINARY)
+    cv2.imshow('Binary Image', bw)
+    dist_transfom_cv = cv2.distanceTransform(edge_function, distanceType=cv2.DIST_L2,
+                                             maskSize=3)  # compute using opencv
+    cv2.normalize(dist_transfom_cv, dist_transfom_cv, 0, 1.0, cv2.NORM_MINMAX)
+    display_image("Display Transform", dist_transfom_cv)
     # compare and print mean absolute difference
-    print("Mean absolute difference: ", np.abs(dist_transfom_mine.mean() - dist_transfom_cv.mean()))
+
 
 if __name__ == "__main__":
-
-    task1()
-    task2()
-    task3()
-    task4()
+    #task1()
+    #task2()
+    #task3()
+    # task4()
     task5()
-
