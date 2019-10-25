@@ -33,9 +33,17 @@ def display_image(window_name, img):
     cv2.destroyAllWindows()
 
 
-def display_rect(label, result, image, template):
-    indexes = np.unravel_index(result.argmax(), result.shape)
-    cv2.rectangle(image, indexes, (indexes[0] + template.shape[0], indexes[1] + template.shape[1]),
+def display_rect(label, result, image, template,method='max'):
+    all_indices = []
+    if method == 'max':
+        indexes = np.unravel_index(result.argmax(), result.shape)
+        all_indices.append(indexes)
+    else:
+        all_indices = np.where(result >= 0.7)
+        all_indices = list(map(lambda x,y:(x,y), all_indices[0],all_indices[1]))
+
+    for indexes in all_indices:
+        cv2.rectangle(image, indexes, (indexes[0] + template.shape[0], indexes[1] + template.shape[1]),
                   color=(200, 0, 0,), thickness=1)
     display_image(label, image)
 
@@ -111,7 +119,7 @@ def task2():
 
     img_cpy = image.copy()
     result_ncc = normalized_cross_correlation(image, template)
-    display_rect("2 - Own NCC", result_ncc, img_cpy, template)
+    display_rect("2 - Own NCC", result_ncc, img_cpy, template, method='threshold')
 
     img_cpy = image.copy()
     result_cv_sqdiff = cv2.matchTemplate(image, template, method=cv2.TM_SQDIFF)  # calculate using opencv
@@ -236,7 +244,7 @@ def l2_distance_transform_2D(edge_function, positive_inf, negative_inf):
 
 def task5():
     image = cv2.imread("data/traffic.jpg", 0)
-    edges = cv2.Canny(image,100,255)  # compute edges
+    edges = cv2.Canny(image,100,200)  # compute edges
     display_image("5 - a Edges", edges)
     edges = ~edges
 
