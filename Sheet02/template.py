@@ -141,35 +141,78 @@ def build_gaussian_pyramid_opencv(image, num_levels):
         gaussian_pyramid.append(G)
     return gaussian_pyramid
 
+def down_sample(image):
+    rows, columns = image.shape
+    if rows % 2 != 0:
+        rows -= 1
+    if columns % 2 != 0:
+        columns -= 1
+    image_new_col_removed = np.delete(image, list(range(1, columns, 2)), axis=1)
+    image_sampled_down = np.delete(image_new_col_removed, list(range(1, rows, 2)), axis=0)
+    return image_sampled_down.astype(np.uint8)
 
 def build_gaussian_pyramid(image, num_levels, sigma):
-    return None
+    pyramid = [image]
+    image_new = image.copy()
+    for level in range(num_levels -1):
+        image_new = cv2.GaussianBlur(image_new, (0, 0), sigma, 0)
+        image_new = down_sample(image_new)
+        pyramid.append(image_new)
+    return pyramid
 
+def crop_ROI(image, PATCH_SIZE, location, previous_loc=(0,0)):
+    top_left_corner = location[0] - int(PATCH_SIZE[0] / 2), location[1] - int(PATCH_SIZE[1] / 2)
+    bottom_right_corner = location[0] + int(PATCH_SIZE[0] / 2), location[1] + int(PATCH_SIZE[1] / 2)
+    return image[top_left_corner[0]:bottom_right_corner[0], top_left_corner[1]:bottom_right_corner[1]]
 
-def template_matching_multiple_scales(pyramid, template):
-    return None
+def template_matching_multiple_scales(image_pyramid, template_pyramid):
+    num_levels = len(image_pyramid)
+    _, _, _, max_loc = cv2.minMaxLoc(template_pyramid[num_levels-1])
+    results = []
+    for level in range(num_levels-1, -1, -1):
+        if level == num_levels - 1:
+            result = normalized_cross_correlation(image_pyramid[level], template_pyramid[level])
+            results.append(draw_rectangle(image_pyramid[level], template_pyramid[level], result, 'Level {}'.format(level)))
+            _, _, _, max_loc = cv2.minMaxLoc(result)
+        else:
+            new_max_loc = tuple(2*x for x in max_loc)
+            image_cpy = crop_ROI(image_pyramid[level], template_pyramid[level].shape, new_max_loc, max_loc).astype(np.uint8)
+            result = normalized_cross_correlation(image_cpy, template_pyramid[level])
+            results.append(draw_rectangle(image_pyramid[level], template_pyramid[level], result, 'Level {}'.format(level), new_max_loc))
+            max_loc = new_max_loc
+    return results
 
+def draw_rectangle(image, template, result, window_label, previous_loc=(0,0)):
+    img_cpy = image.copy()
+    h, w = template.shape[:2]
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    img_cpy = cv2.rectangle(img_cpy, (previous_loc[0]+ max_loc[0], previous_loc[1]+max_loc[1]),
+                            (previous_loc[0] + max_loc[0] + w + 1, previous_loc[1] + max_loc[1] + h + 1), 255, 1)
+    #display_image(window_label, img_cpy)
+    return img_cpy
 
 def task3():
     image = cv2.imread("data/traffic.jpg", 0)
     template = cv2.imread("data/traffic-template.png", 0)
-    #display_image('template', template)
     cv_pyramid = build_gaussian_pyramid_opencv(image, 4)
-    #mine_pyramid = build_gaussian_pyramid(image, 8)
+    mine_pyramid = build_gaussian_pyramid(image, num_levels=4, sigma=3)
 
-    # compare and print mean absolute difference at each level
-    #result = template_matching_multiple_scales(pyramid, template)
-    #for i in range(4):
-        #display_image('level - {}'.format(i+1), cv_pyramid[i])
-    # show result
-    img_cpy = image.copy()
-    w, h = template.shape[::-1]
-    result_ncc = normalized_cross_correlation(image, template)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result_ncc)
-    top_left = max_loc
-    bottom_right = (top_left[0] + w, top_left[1] + h)
-    cv2.rectangle(img_cpy, top_left, bottom_right, 255, 1)
-    display_image('Template', img_cpy)
+    # display the image and compare and print mean absolute difference at each level
+    for i in range(4):
+        display_image('level - {}: By Our Function'.format(i+1), mine_pyramid[i])
+        display_image('level - {}: By OpenCV'.format(i + 1), cv_pyramid[i])
+        _, mean_abs_diff = get_pixel_error(cv_pyramid[i], mine_pyramid[i])
+        print('Mean absolute - level {}: {}'.format(i+1, mean_abs_diff))
+
+    start_time = time.time()
+    result = normalized_cross_correlation(image, template)
+    _ = draw_rectangle(image, template, result, 'Template Search Using NCC')
+    print('Time taken by normalized correlation: {}'.format(time.time() - start_time))
+
+    template_pyramid = build_gaussian_pyramid(template, num_levels=4, sigma=3)
+    start_time_gaussian = time.time()
+    results = template_matching_multiple_scales(mine_pyramid, template_pyramid)
+    print('Time taken by normalized correlation using gaussian pyramid: {}'.format(time.time() - start_time_gaussian))
 
 def get_derivative_of_gaussian_kernel(size, sigma):
     kernel = cv2.getGaussianKernel(size, sigma, )
