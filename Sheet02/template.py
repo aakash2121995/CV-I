@@ -5,6 +5,12 @@ import matplotlib.pyplot as plt
 
 
 def gaussian_kernel2D(size=15, sigma=5):
+    '''
+    calculates a 2-D Gaussian Kernel
+    :param size: Kernel Size
+    :param sigma: Standard Deviation
+    :return: 2-D Gaussian Kernel
+    '''
     ax = np.arange(-(size // 2), size // 2 + 1)
     xx, yy = np.meshgrid(ax, ax)
     kernel = np.exp(-(xx ** 2 + yy ** 2) / (2. * sigma ** 2))
@@ -49,6 +55,12 @@ def display_rect(label, result, image, template,method='max'):
 
 
 def get_convolution_using_fourier_transform(image, kernel):
+    '''
+    convolution of image and kernel using multiplication in frequency domain
+    :param image: Original Image
+    :param kernel: Kernel for convolution
+    :return: convolved image
+    '''
     l, w = image.shape[0] + kernel.shape[0] - 1, image.shape[1] + kernel.shape[1] - 1
     fft_image = np.fft.fft2(image, [l, w])
     fft_kernel = np.fft.fft2(kernel, [l, w])
@@ -57,21 +69,27 @@ def get_convolution_using_fourier_transform(image, kernel):
 
 
 def task1():
+    '''
+    Solution for Task 1
+    '''
     image = cv2.imread("data/einstein.jpeg", 0)
     display_image('Task - 1: Original Image', image)
+
     # calculate kernel
-    # kernel = cv2.getGaussianKernel(ksize=7, sigma=1, ktype=cv2.CV_64F)
     kernel = gaussian_kernel2D(7, 1)
-    # calculate convolution of image and kernel using OpenCV
+
+    #### calculate convolution of image and kernel using OpenCV ####
     # container for output image
     conv_result = image
     # apply filter2D on the image and display the result
     cv2.filter2D(src=image, dst=conv_result, ddepth=-1, kernel=kernel)
     display_image('1 - a - Gaussian Blur with Filter2D', conv_result)
-    # calculate convolution of image and kernel using FFT
+
+    #### calculate convolution of image and kernel using FFT ####
     fft_result = get_convolution_using_fourier_transform(image, kernel).astype(np.uint8)
     display_image('1 - a - Gaussian Blur with Fourier Transform', fft_result)
-    # compare results
+
+    #### compare results ####
     # pad the convolved image with zero to resolve the size difference
     conv_result_padded = np.pad(conv_result, [(fft_result.shape[0]-conv_result.shape[0])//2,
                                               (fft_result.shape[1]-conv_result.shape[1])//2], mode='constant')
@@ -134,6 +152,12 @@ def task2():
 
 
 def build_gaussian_pyramid_opencv(image, num_levels):
+    '''
+    build the Gaussian Pyramid of an Image using OpenCV pyrdown
+    :param image: Original Image
+    :param num_levels: Number of levels
+    :return: the Gaussian Pyramid of the image
+    '''
     gaussian_pyramid = [image]
     G = image.copy()
     for i in range(num_levels):
@@ -142,6 +166,11 @@ def build_gaussian_pyramid_opencv(image, num_levels):
     return gaussian_pyramid
 
 def down_sample(image):
+    '''
+    Down Sample the image by removing even-numbered rows and columns
+    :param image: Original Image
+    :return: Down sampled Image
+    '''
     rows, columns = image.shape
     if rows % 2 != 0:
         rows -= 1
@@ -152,6 +181,13 @@ def down_sample(image):
     return image_sampled_down.astype(np.uint8)
 
 def build_gaussian_pyramid(image, num_levels, sigma):
+    '''
+    build the Gaussian Pyramid of an Image using our implementation
+    :param image: Original Image
+    :param num_levels: Number of levels
+    :param sigma: Standard deviation for the Gaussian Blur Kernel
+    :return: the Gaussian Pyramid of the image
+    '''
     pyramid = [image]
     image_new = image.copy()
     for level in range(num_levels -1):
@@ -160,59 +196,107 @@ def build_gaussian_pyramid(image, num_levels, sigma):
         pyramid.append(image_new)
     return pyramid
 
-def crop_ROI(image, PATCH_SIZE, location, previous_loc=(0,0)):
-    top_left_corner = location[0] - int(PATCH_SIZE[0] / 2), location[1] - int(PATCH_SIZE[1] / 2)
-    bottom_right_corner = location[0] + int(PATCH_SIZE[0] / 2), location[1] + int(PATCH_SIZE[1] / 2)
+def get_ROI(image, template_size, location):
+    '''
+    
+    :param image: Image of the corresponding level
+    :param template_size: template shape for the corresponding level
+    :param location: location of the ROI
+    :return: ROI of the Image
+    '''
+    top_left_corner = location[0] - int(template_size[0] / 2), location[1] - int(template_size[1] / 2)
+    bottom_right_corner = location[0] + int(template_size[0] / 2), location[1] + int(template_size[1] / 2)
     return image[top_left_corner[0]:bottom_right_corner[0], top_left_corner[1]:bottom_right_corner[1]]
 
 def template_matching_multiple_scales(image_pyramid, template_pyramid):
+    '''
+    fast template using Level wise search in a Gaussian Pyramid
+    :param image_pyramid: Gaussian Pyramid of the image
+    :param template_pyramid: Gaussian Pyramid of the template
+    :return: images with a rectangle drwan around the region where template was found for each level
+    '''
     num_levels = len(image_pyramid)
     _, _, _, max_loc = cv2.minMaxLoc(template_pyramid[num_levels-1])
     results = []
     for level in range(num_levels-1, -1, -1):
         if level == num_levels - 1:
             result = normalized_cross_correlation(image_pyramid[level], template_pyramid[level])
-            results.append(draw_rectangle(image_pyramid[level], template_pyramid[level], result, 'Level {}'.format(level)))
+            results.append(draw_rectangle(image_pyramid[level], template_pyramid[level], result))
             _, _, _, max_loc = cv2.minMaxLoc(result)
         else:
             new_max_loc = tuple(2*x for x in max_loc)
-            image_cpy = crop_ROI(image_pyramid[level], template_pyramid[level].shape, new_max_loc, max_loc).astype(np.uint8)
+            image_cpy = get_ROI(image_pyramid[level], template_pyramid[level].shape, new_max_loc).astype(np.uint8)
             result = normalized_cross_correlation(image_cpy, template_pyramid[level])
-            results.append(draw_rectangle(image_pyramid[level], template_pyramid[level], result, 'Level {}'.format(level), new_max_loc))
+            results.append(draw_rectangle(image_pyramid[level], template_pyramid[level], result, new_max_loc))
             max_loc = new_max_loc
     return results
 
-def draw_rectangle(image, template, result, window_label, previous_loc=(0,0)):
+def draw_rectangle(image, template, result, previous_loc=(0,0)):
+    '''
+    draw a rectangle on the image around the region where template was found
+    :param image: Original Image
+    :param template: Template
+    :param result: Map of comparison results
+    :param previous_loc: Location of template at previous level search if available
+    :return: image with a rectangle drwan around the region where template was found
+    '''
+    #Container for the output image
     img_cpy = image.copy()
+    #height and width of image
     h, w = template.shape[:2]
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    #get the corners
+    _, _, _, max_loc = cv2.minMaxLoc(result)
+    #draw the rectangle
     img_cpy = cv2.rectangle(img_cpy, (previous_loc[0]+ max_loc[0], previous_loc[1]+max_loc[1]),
                             (previous_loc[0] + max_loc[0] + w + 1, previous_loc[1] + max_loc[1] + h + 1), 255, 1)
-    #display_image(window_label, img_cpy)
     return img_cpy
 
 def task3():
+    '''
+    Solution for Task 3
+    '''
+    #read the image
     image = cv2.imread("data/traffic.jpg", 0)
+    #read the template
     template = cv2.imread("data/traffic-template.png", 0)
-    cv_pyramid = build_gaussian_pyramid_opencv(image, 4)
-    mine_pyramid = build_gaussian_pyramid(image, num_levels=4, sigma=3)
 
-    # display the image and compare and print mean absolute difference at each level
+    #### get the pyramid by OpenCv library Function ####
+    cv_pyramid = build_gaussian_pyramid_opencv(image, 4)
+
+    #### get the pyramid by our implementation ####
+    mine_pyramid = build_gaussian_pyramid(image, num_levels=4, sigma=1)
+
+    #### display both the pyramids and compare and print mean absolute difference at each level ####
     for i in range(4):
         display_image('level - {}: By Our Function'.format(i+1), mine_pyramid[i])
         display_image('level - {}: By OpenCV'.format(i + 1), cv_pyramid[i])
         _, mean_abs_diff = get_pixel_error(cv_pyramid[i], mine_pyramid[i])
         print('Mean absolute - level {}: {}'.format(i+1, mean_abs_diff))
 
+    #### template matching using our implementation of NCC ####
+    # initialise the time
     start_time = time.time()
+    #match the template using NCC
     result = normalized_cross_correlation(image, template)
-    _ = draw_rectangle(image, template, result, 'Template Search Using NCC')
+    #draw the rectangle around the region
+    template_matched = draw_rectangle(image, template, result)
+    #print the time taken by the process
     print('Time taken by normalized correlation: {}'.format(time.time() - start_time))
+    #display the image
+    display_image('Template Search Using NCC', template_matched)
 
+    #### fast template matching using Gaussian Pyramid ####
+    #build a pyramid for the template
     template_pyramid = build_gaussian_pyramid(template, num_levels=4, sigma=3)
+    #initialise the time
     start_time_gaussian = time.time()
+    # match the template using Level wise search in a Gaussian Pyramid
     results = template_matching_multiple_scales(mine_pyramid, template_pyramid)
+    # print the time taken by the process
     print('Time taken by normalized correlation using gaussian pyramid: {}'.format(time.time() - start_time_gaussian))
+    #display the image for each level
+    for i in range(len(results)):
+        display_image('level - {} Search for Template'.format(i+1), results[i])
 
 def get_derivative_of_gaussian_kernel(size, sigma):
     kernel = cv2.getGaussianKernel(size, sigma, )
