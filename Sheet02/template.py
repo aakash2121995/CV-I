@@ -19,7 +19,7 @@ def gaussian_kernel2D(size=15, sigma=5):
 
 def get_pixel_error(source, target):
     """
-    Computes pixel wise absolute difference between source and target image
+    Computes pixel wise absolute difference and mean absolute difference between source and target image
     :param source: original image
     :param target: resulting image after processing
     :return: pixel-wise difference and mean pixel error
