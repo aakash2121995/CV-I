@@ -2,6 +2,16 @@ import numpy as np
 import cv2 as cv
 import random
 
+def display_image(window_name, img):
+    """
+    Displays image with given window name.
+    :param window_name: name of the window
+    :param img: image object to display
+    """
+    cv.imshow(window_name, img)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+
 
 ##############################################
 #     Task 1        ##########################
@@ -11,11 +21,23 @@ import random
 def task_1_a():
     print("Task 1 (a) ...")
     img = cv.imread('../images/shapes.png')
-    '''
-    ...
-    your code ...
-    ...
-    '''
+    edges = cv.Canny(img, 50, 150, apertureSize=3)
+    # display_image("1 - Edges",edges)
+    lines = cv.HoughLines(edges, 0.5, np.pi / 180,50)
+    lines = np.squeeze(lines,axis=1)
+    for rho, theta in lines:
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a * rho
+        y0 = b * rho
+        x1 = int(x0 + 1000 * (-b))
+        y1 = int(y0 + 1000 * (a))
+        x2 = int(x0 - 1000 * (-b))
+        y2 = int(y0 - 1000 * (a))
+
+        cv.line(img, (x1, y1), (x2, y2), (0, 255, 0), 1)
+
+    display_image("1 - Hough transform CV", img)
 
 
 def myHoughLines(img_edges, d_resolution, theta_step_sz, threshold):
@@ -29,6 +51,22 @@ def myHoughLines(img_edges, d_resolution, theta_step_sz, threshold):
     """
     accumulator = np.zeros((int(180 / theta_step_sz), int(np.linalg.norm(img_edges.shape) / d_resolution)))
     detected_lines = []
+    edge_indexes = np.where(img_edges == 255)
+    edge_indexes = list(map(lambda x, y: (x, y), edge_indexes[0], edge_indexes[1]))
+
+    for x,y in edge_indexes:
+        for theta in range(accumulator.shape[0]):
+            d = abs(y*np.cos(np.pi*theta*theta_step_sz/180) - x*np.sin(np.pi*theta*theta_step_sz/180))
+            if d <=0:
+                print("x = {0}, y = {1}, theta = {2}".format(x,y,theta*theta_step_sz))
+                print(d)
+            accumulator[theta, int(d/d_resolution)] += 1
+
+    detected_lines = np.where(accumulator >= threshold)
+    thetas = detected_lines[0]*theta_step_sz*np.pi/180
+    d_ = detected_lines[1]*d_resolution
+    detected_lines = list(map(lambda x, y: (x, y), thetas, d_))
+
     '''
     ...
     your code ...
@@ -40,9 +78,22 @@ def myHoughLines(img_edges, d_resolution, theta_step_sz, threshold):
 def task_1_b():
     print("Task 1 (b) ...")
     img = cv.imread('../images/shapes.png')
-    img_gray = None # convert the image into grayscale
-    edges = None # detect the edges
-    #detected_lines, accumulator = myHoughLines(edges, 1, 2, 50)
+    img_gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY) # convert the image into grayscale
+    edges = cv.Canny(img_gray,50,150) # detect the edges
+    detected_lines, accumulator = myHoughLines(edges, 1, 2, 50)
+    for theta, rho in detected_lines:
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a * rho
+        y0 = b * rho
+        x1 = int(x0 + 1000 * (-b))
+        y1 = int(y0 + 1000 * (a))
+        x2 = int(x0 - 1000 * (-b))
+        y2 = int(y0 - 1000 * (a))
+
+        cv.line(img, (x1, y1), (x2, y2), (0, 255, 0), 1)
+
+    display_image("1 - Hough transform Own implementation", img)
     '''
     ...
     your code ...
@@ -155,11 +206,11 @@ def task_4_a():
 ##############################################
 
 if __name__ == "__main__":
-    task_1_a()
+    # task_1_a()
     task_1_b()
-    task_2()
-    task_3_a()
-    task_3_b()
-    task_3_c()
-    task_4_a()
+    # task_2()
+    # task_3_a()
+    # task_3_b()
+    # task_3_c()
+    # task_4_a()
 
