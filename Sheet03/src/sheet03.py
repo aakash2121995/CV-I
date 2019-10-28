@@ -133,11 +133,13 @@ def myKmeans(data, k):
     :param k: number of clusters
     :return: centers and list of indices that store the cluster index for each data point
     """
+    data = data.astype(np.float32)
     centers = np.zeros((k, data.shape[1]))
     index = np.zeros(data.shape[0], dtype=int)
     clusters = [[] for i in range(k)]
 
     # initialize centers using some random points from data
+    centers = data[np.random.choice(data.shape[0],k),:].copy()
     # ....
 
     convergence = False
@@ -145,8 +147,17 @@ def myKmeans(data, k):
     while not convergence:
         # assign each point to the cluster of closest center
         # ...
+        distances = np.empty((data.shape[0],k))
+        for cluster_ind in range(k):
+            distances[:,cluster_ind] =  np.linalg.norm(data - centers[cluster_ind],axis=1)
 
         # update clusters' centers and check for convergence
+        old_centers = centers.copy()
+        index = distances.argmin(axis=1)
+        for cluster_ind in range(k):
+            centers[cluster_ind] = data[np.where(index == cluster_ind)].mean(axis=0)
+        if np.linalg.norm(old_centers-centers) < 1:
+            convergence = True
         # ...
 
         iterationNo += 1
@@ -155,9 +166,34 @@ def myKmeans(data, k):
     return index, centers
 
 
+def display_clustered_img(img, index, centers,k,label):
+    for cluster_ind in range(k):
+        indices = np.unravel_index(np.where(index==cluster_ind), (img.shape[0],img.shape[1]))
+        img[indices] = centers[cluster_ind]
+
+    display_image("{0} Image  k = {1}".format(label,k),img)
+
 def task_3_a():
     print("Task 3 (a) ...")
     img = cv.imread('../images/flower.png')
+    img = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+    data = img.reshape(img.shape[0]*img.shape[1],1)
+
+    k = 2
+    img_cpy = img.copy()
+    index,centers = myKmeans(data,k)
+    display_clustered_img(img_cpy,index,centers,k,"Intensity")
+
+    k = 4
+    img_cpy = img.copy()
+    index, centers = myKmeans(data, k)
+    display_clustered_img(img_cpy, index, centers, k, "Intensity")
+
+    k = 6
+    img_cpy = img.copy()
+    index, centers = myKmeans(data, k)
+    display_clustered_img(img_cpy, index, centers, k, "Intensity")
+
     '''
     ...
     your code ...
@@ -168,6 +204,23 @@ def task_3_a():
 def task_3_b():
     print("Task 3 (b) ...")
     img = cv.imread('../images/flower.png')
+    data = img.reshape(img.shape[0]*img.shape[1],3)
+
+    k = 2
+    img_cpy = img.copy()
+    index,centers = myKmeans(data,k)
+    display_clustered_img(img_cpy,index,centers,k,"Color")
+
+    k = 4
+    img_cpy = img.copy()
+    index, centers = myKmeans(data, k)
+    display_clustered_img(img_cpy, index, centers, k, "Color")
+
+    k = 6
+    img_cpy = img.copy()
+    index, centers = myKmeans(data, k)
+    display_clustered_img(img_cpy, index, centers, k, "Color")
+
     '''
     ...
     your code ...
@@ -178,6 +231,31 @@ def task_3_b():
 def task_3_c():
     print("Task 3 (c) ...")
     img = cv.imread('../images/flower.png')
+    img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    rows = np.linspace(0,255,img.shape[0])
+    cols = np.linspace(0,255,img.shape[1])
+    xx, yy = np.meshgrid(cols,rows)
+    data = np.vstack((img.flatten(),xx.flatten(),yy.flatten())).T
+
+    k = 2
+    img_cpy = img.copy()
+    index, centers = myKmeans(data, k)
+    centers = centers[:, 0]
+    display_clustered_img(img_cpy, index, centers, k, "Intensity with position")
+
+    k = 4
+    img_cpy = img.copy()
+    index, centers = myKmeans(data, k)
+    centers = centers[:, 0]
+    display_clustered_img(img_cpy, index, centers, k, "Intensity with position")
+
+    k = 6
+    img_cpy = img.copy()
+    index, centers = myKmeans(data, k)
+    centers = centers[:,0]
+    display_clustered_img(img_cpy, index, centers, k, "Intensity with position")
+
+
     '''
     ...
     your code ...
@@ -206,11 +284,11 @@ def task_4_a():
 ##############################################
 
 if __name__ == "__main__":
-    # task_1_a()
+    task_1_a()
     task_1_b()
-    # task_2()
-    # task_3_a()
-    # task_3_b()
-    # task_3_c()
-    # task_4_a()
+    task_2()
+    task_3_a()
+    task_3_b()
+    task_3_c()
+    task_4_a()
 
