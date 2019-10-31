@@ -66,12 +66,6 @@ def myHoughLines(img_edges, d_resolution, theta_step_sz, threshold):
     thetas = detected_lines[0]*theta_step_sz*np.pi/180
     d_ = detected_lines[1]*d_resolution
     detected_lines = list(map(lambda x, y: (x, y), thetas, d_))
-
-    '''
-    ...
-    your code ...
-    ...
-    '''
     return detected_lines, accumulator
 
 
@@ -94,11 +88,6 @@ def task_1_b():
         cv.line(img, (x1, y1), (x2, y2), (0, 255, 0), 1)
 
     display_image("1 - Hough transform Own implementation", img)
-    '''
-    ...
-    your code ...
-    ...
-    '''
 
 
 ##############################################
@@ -109,16 +98,14 @@ def task_1_b():
 def task_2():
     print("Task 2 ...")
     img = cv.imread('../images/line.png')
-    img_gray = None # convert the image into grayscale
-    edges = None # detect the edges
-    theta_res = None # set the resolution of theta
-    d_res = None # set the distance resolution
-    #_, accumulator = myHoughLines(edges, d_res, theta_res, 50)
-    '''
-    ...
-    your code ...
-    ...
-    '''
+    display_image('accumulator', img)
+    img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # convert the image into grayscale
+    edges = cv.Canny(img_gray, 50, 150)  # detect the edges
+    theta_res = 2 # set the resolution of theta
+    d_res = 1 # set the distance resolution
+    _, accumulator = myHoughLines(edges, d_res, theta_res, 50)
+    display_image('accumulator', accumulator.astype(np.uint8))
+
 
 
 ##############################################
@@ -270,13 +257,36 @@ def task_3_c():
 
 def task_4_a():
     print("Task 4 (a) ...")
-    D = None  # construct the D matrix
-    W = None  # construct the W matrix
-    '''
-    ...
-    your code ...
-    ...
-    '''
+    start_vertex = 'A'
+    W = np.array([[0., 1., 0.2, 1., 0., 0., 0., 0.],
+                  [1., 0., 0.1, 0., 1., 0., 0., 0.],
+                  [0.2, 0.1, 0., 1., 0., 1., 0.3, 0.],
+                  [1., 0., 1., 0., 0., 1., 0., 0.],
+                  [0., 1., 0., 0., 0., 0., 1., 1.],
+                  [0., 0., 1., 1., 0., 0., 1., 0.],
+                  [0., 0., 0.3, 0., 1., 1., 0., 1.],
+                  [0., 0., 0., 0., 1., 0., 1., 0.]])  # construct the W matrix
+    d = W.sum(axis=1)
+    D =  np.diag(d)
+    L = D - W
+    D_sqrt = np.diag(np.power(d, -1./2.))
+    eigenEquation = np.dot(D_sqrt, np.dot(L, D_sqrt))
+    lambdas, Z = cv.eigen(eigenEquation)[1:]
+    eigen_value = np.amin(lambdas[lambdas != np.amin(lambdas)])
+    print('Second smallest eigen value: {}'.format(eigen_value))
+    y = Z[np.where(lambdas==eigen_value)[0]].T
+    y = np.dot(D_sqrt, y)
+    print('Corresponding eigen vector: {}'.format(y))
+    min_N_cut = np.dot(y.T, np.dot(L, y))/np.dot(y.T, np.dot(D, y))
+    print('Minimum NCut: {}'.format(min_N_cut[0][0]))
+    c1 = np.where(y > 0)[0]
+    c2 = np.where(y < 0)[0]
+    cluster1, cluster2 = [], []
+    for i in range(len(c1)):
+        cluster1.append(chr(ord(start_vertex) + c1[i]))
+        cluster2.append(chr(ord(start_vertex) + c2[i]))
+    print('Vertices in cluster - 1: {}'.format(cluster1))
+    print('Vertices in cluster - 2: {}'.format(cluster2))
 
 
 ##############################################
@@ -287,8 +297,8 @@ if __name__ == "__main__":
     task_1_a()
     task_1_b()
     task_2()
-    task_3_a()
-    task_3_b()
-    task_3_c()
-    task_4_a()
+    #task_3_a()
+    #task_3_b()
+    #task_3_c()
+    #task_4_a()
 
