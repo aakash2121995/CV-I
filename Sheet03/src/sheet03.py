@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 import random
+import matplotlib.pyplot as plt
 
 def display_image(window_name, img):
     """
@@ -11,7 +12,6 @@ def display_image(window_name, img):
     cv.imshow(window_name, img)
     cv.waitKey(0)
     cv.destroyAllWindows()
-
 
 ##############################################
 #     Task 1        ##########################
@@ -94,19 +94,50 @@ def task_1_b():
 #     Task 2        ##########################
 ##############################################
 
+def getNeighbors(data, centroid, radius = 4):
+    neighbors = []
+    for datapoint in data:
+        distance_between = np.sqrt(np.sum((datapoint - centroid)**2))
+        if distance_between <= radius:
+            neighbors.append(datapoint)
+    return neighbors
+
+def meanShift(data, window_size=4, max_iteration=5):
+    centers = data.copy()
+    convergence = False
+    while not convergence:
+        newCenters = []
+        for center in centers:
+            neighbors = getNeighbors(data, center, window_size)
+            newCenter = np.average(neighbors, axis=0)
+            newCenters.append(tuple(newCenter))
+        uniqueCenters = sorted(list(set(newCenters)))
+        prev_centers = centers.copy()
+        centers = np.array(uniqueCenters)
+        if np.array_equal(prev_centers, centers):
+            convergence = True
+    return centers
+
+
 
 def task_2():
     print("Task 2 ...")
     img = cv.imread('../images/line.png')
-    display_image('accumulator', img)
+    #display_image('accumulator', img)
     img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # convert the image into grayscale
     edges = cv.Canny(img_gray, 50, 150)  # detect the edges
     theta_res = 2 # set the resolution of theta
     d_res = 1 # set the distance resolution
-    _, accumulator = myHoughLines(edges, d_res, theta_res, 50)
-    display_image('accumulator', accumulator.astype(np.uint8))
+    detected_lines, accumulator = myHoughLines(edges, d_res, theta_res, 50)
+    #display_image('accumulator', accumulator.astype(np.uint8))
+    plt.scatter(accumulator[:, 0], accumulator[:, 1], marker='o', label='data', s=150)
+    plt.legend()
 
-
+    centers = meanShift(accumulator)
+    detected_lines = np.where(accumulator >= centers)
+    plt.scatter(centers[:, 0], centers[:, 1], marker='*', label='centers', s=150)
+    plt.legend()
+    plt.show()
 
 ##############################################
 #     Task 3        ##########################
@@ -181,11 +212,6 @@ def task_3_a():
     index, centers = myKmeans(data, k)
     display_clustered_img(img_cpy, index, centers, k, "Intensity")
 
-    '''
-    ...
-    your code ...
-    ...
-    '''
 
 
 def task_3_b():
@@ -207,12 +233,6 @@ def task_3_b():
     img_cpy = img.copy()
     index, centers = myKmeans(data, k)
     display_clustered_img(img_cpy, index, centers, k, "Color")
-
-    '''
-    ...
-    your code ...
-    ...
-    '''
 
 
 def task_3_c():
@@ -241,13 +261,6 @@ def task_3_c():
     index, centers = myKmeans(data, k)
     centers = centers[:,0]
     display_clustered_img(img_cpy, index, centers, k, "Intensity with position")
-
-
-    '''
-    ...
-    your code ...
-    ...
-    '''
 
 
 ##############################################
@@ -294,8 +307,8 @@ def task_4_a():
 ##############################################
 
 if __name__ == "__main__":
-    task_1_a()
-    task_1_b()
+    #task_1_a()
+    #task_1_b()
     task_2()
     #task_3_a()
     #task_3_b()
