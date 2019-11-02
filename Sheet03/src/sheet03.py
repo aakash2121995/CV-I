@@ -182,13 +182,24 @@ def mean_shift(data, window_size=5):
 def task_2():
     print("Task 2 ...")
     img = cv.imread('../images/line.png')
-    #display_image('accumulator', img)
     img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)  # convert the image into grayscale
     edges = cv.Canny(img_gray, 50, 150)  # detect the edges
     theta_res = 2 # set the resolution of theta
     d_res = 1 # set the distance resolution
     detected_lines, accumulator = myHoughLines(edges, d_res, theta_res, 50)
-    #display_image('accumulator', accumulator.astype(np.uint8))
+    for theta, rho in detected_lines:
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a * rho
+        y0 = b * rho
+        x1 = int(x0 + 1000 * (-b))
+        y1 = int(y0 + 1000 * (a))
+        x2 = int(x0 - 1000 * (-b))
+        y2 = int(y0 - 1000 * (a))
+
+        cv.line(img, (x1, y1), (x2, y2), (0, 255, 0), 1)
+
+    display_image("Accumulator with detected lines", img.astype(np.uint8))
     plt.scatter(accumulator[:, 0], accumulator[:, 1], marker='o', label='data', s=150)
     plt.legend()
 
