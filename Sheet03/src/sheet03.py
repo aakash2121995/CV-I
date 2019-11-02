@@ -2,6 +2,8 @@ import numpy as np
 import cv2 as cv
 import random
 import matplotlib.pyplot as plt
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def display_image(window_name, img):
     """
@@ -94,30 +96,87 @@ def task_1_b():
 #     Task 2        ##########################
 ##############################################
 
-def getNeighbors(data, centroid, radius = 4):
+def getNeighbors(data, centroid, radius = 10):
     neighbors = []
+    intensity_threshold = 0.5*np.amax(data)
     for datapoint in data:
-        distance_between = np.sqrt(np.sum((datapoint - centroid)**2))
+        #distance_between = np.sqrt(np.sum((datapoint - centroid)**2))
+        distance_between = np.linalg.norm(datapoint - centroid, axis=None)
         if distance_between <= radius:
             neighbors.append(datapoint)
     return neighbors
 
-def meanShift(data, window_size=4, max_iteration=5):
+class Center:
+    def __init__(self, position, intensity):
+        self.position = position
+        self.instensity = 0.
+        self.neighbors = []
+
+    def calculateNeighbors(self, data, radius):
+        intensity_threshold = 0.5 * np.amax(data)
+        x_left = int(np.maximum(np.ceil(self.position[0])- radius, 0))
+        x_right = int(np.minimum(np.floor(self.position[0]) + radius, data.shape[0]))
+        y_left = int(np.maximum(np.ceil(self.position[1]) - radius, 0))
+        y_right = int(np.minimum(np.floor(self.position[1]) + radius, data.shape[1]))
+        neighbors = []
+        #print(x_left, x_right, y_left, y_right)
+        dataSet = data[x_left:x_right, y_left:y_right]
+
+        '''for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                if x_left <= i <= x_right and y_left <= j <= y_right and self.instensity - intensity_threshold < data[i, j] < self.instensity + intensity_threshold:
+                    neighbors.append([i, j, data[i, j]])'''
+        for i in range(dataSet.shape[0]):
+            for j in range(dataSet.shape[1]):
+                if self.instensity - intensity_threshold < dataSet[i, j] < self.instensity + intensity_threshold:
+                    neighbors.append([i, j, dataSet[i, j]])
+        self.neighbors = np.array(neighbors)
+
+    def shiftCenter(self):
+        self.position[0], self.position[1], self.instensity = np.average(self.neighbors, axis=0)
+
+
+
+def mean_shift(data, window_size=5):
+    centers = [Center([i, j], data[i, j]) for i in range(data.shape[0]) for j in range(data.shape[1])]
+    converged = []
+    i = 0
+    while True:
+        current_converged = []
+        for center in centers:
+            center.calculateNeighbors(data, window_size)
+            prev_center = [center.position[0], center.position[1], center.instensity]
+            center.shiftCenter()
+
+            if center.position[0] == prev_center[0] and center.position[1] == prev_center[1] and center.instensity == prev_center[2]:
+                current_converged.append(center)
+        converged.extend(current_converged)
+        centers = list(set(centers).difference(set(current_converged)))
+        if len(centers) == 0:
+            break
+        i+=1
+        print("iteration {}".format(i))
+
+    return converged
+
+
+'''def meanShift(data, window_size=5, max_iteration=5):
     centers = data.copy()
     convergence = False
+    iter = 0
     while not convergence:
         newCenters = []
+        prev_centers = centers.copy()
         for center in centers:
-            neighbors = getNeighbors(data, center, window_size)
-            newCenter = np.average(neighbors, axis=0)
+            neighbors = getNeighbors(data, center)
+            newCenter = np.mean(neighbors, axis=0)
             newCenters.append(tuple(newCenter))
         uniqueCenters = sorted(list(set(newCenters)))
-        prev_centers = centers.copy()
         centers = np.array(uniqueCenters)
-        if np.array_equal(prev_centers, centers):
-            convergence = True
-    return centers
-
+        convergence = np.array_equal(prev_centers, centers)
+        iter += 1
+    print("iterations {}".format(iter))
+    return centers'''
 
 
 def task_2():
@@ -133,8 +192,10 @@ def task_2():
     plt.scatter(accumulator[:, 0], accumulator[:, 1], marker='o', label='data', s=150)
     plt.legend()
 
-    centers = meanShift(accumulator)
-    detected_lines = np.where(accumulator >= centers)
+    centers = mean_shift(accumulator)
+    print(centers)
+    #detected_lines = np.where(accumulator >= centers)
+    centers = np.array([[c.position[0], c.position[1]] for c in centers])
     plt.scatter(centers[:, 0], centers[:, 1], marker='*', label='centers', s=150)
     plt.legend()
     plt.show()
@@ -167,6 +228,7 @@ def myKmeans(data, k):
         # ...
         distances = np.empty((data.shape[0],k))
         for cluster_ind in range(k):
+            print(centers[cluster_ind])
             distances[:,cluster_ind] =  np.linalg.norm(data - centers[cluster_ind],axis=1)
 
         # update clusters' centers and check for convergence
