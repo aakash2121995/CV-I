@@ -14,9 +14,9 @@ def plot_snake(ax, V, fill='green', line='red', alpha=1, with_txt=False):
     :param with_txt: if True plot numbers as well
     :return:
     """
-    V_plt = np.append(V.reshape(-1), V[0,:]).reshape((-1, 2))
-    ax.plot(V_plt[:,0], V_plt[:,1], color=line, alpha=alpha)
-    ax.scatter(V[:,0], V[:,1], color=fill,
+    V_plt = np.append(V.reshape(-1), V[0, :]).reshape((-1, 2))
+    ax.plot(V_plt[:, 0], V_plt[:, 1], color=line, alpha=alpha)
+    ax.scatter(V[:, 0], V[:, 1], color=fill,
                edgecolors='black',
                linewidth=2, s=50, alpha=alpha)
     if with_txt:
@@ -49,6 +49,104 @@ def load_data(fpath, radius):
 # FUNCTIONS
 # ------------------------
 # your implementation here
+def display_image(window_name, img):
+    """
+    Displays image with given window name.
+    :param window_name: name of the window
+    :param img: image object to display
+    """
+    cv2.imshow(window_name, img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+def get_derivative_of_gaussian_kernel(size=5, sigma=0.6):
+    kernel = cv2.getGaussianKernel(size, sigma, )
+    kernel_x = kernel * kernel.T
+    kernel_y = kernel_x.copy()
+    kernel_x_padded = cv2.copyMakeBorder(kernel_x[:, :-1].copy(), top=0, bottom=0, left=1, right=0,
+                                         borderType=cv2.BORDER_REFLECT)
+    kernel_y_padded = cv2.copyMakeBorder(kernel_y[:-1, :].copy(), top=1, bottom=0, left=0, right=0,
+                                         borderType=cv2.BORDER_REFLECT)
+
+    return kernel_x_padded - kernel_x, kernel_y_padded - kernel_y
+
+
+def get_gradient_magnitude(image):
+    # sobelx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=5)
+    # sobely = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=5)
+    # magnitude = sobelx**2 + sobely**2
+    kernel_x, kernel_y = get_derivative_of_gaussian_kernel(5, 0.6)
+
+    edges_x = cv2.filter2D(image, -1, kernel_x).astype(np.int32) # convolve with kernel_x
+    edges_y = cv2.filter2D(image, -1, kernel_y).astype(np.int32)  # convolve with kernel_y
+
+    magnitude = np.square(edges_x) + np.square(edges_y)
+    return magnitude
+
+
+def get_all_states(node,max_row,max_col):
+    post_x,post_y,pre_x,pre_y = 1,1,1,1
+    if node[0] == 0:
+        pre_x = 0
+    elif node[0]>=max_row-1:
+        post_x = 0
+    if node[1] == 0:
+        pre_y = 0
+    elif node[1] >= max_col-1:
+        post_y = 0
+
+    one_d_states_x = np.linspace(node[0] - pre_x, node[0] + post_x, 3, dtype=np.int32)
+    one_d_states_y = np.linspace(node[1] - pre_y, node[1] + post_y, 3, dtype=np.int32)
+    k = np.meshgrid( one_d_states_x,one_d_states_y)
+    k[0] = k[0].flatten()
+    k[1] = k[1].flatten()
+
+    return k
+
+
+def snake_optimisation(V_trunc, gradient, alpha):
+    all_transitions = []
+    all_transition_indexes = []
+    node = V_trunc[0]
+    k = get_all_states(node,gradient.shape[0],gradient.shape[1])
+    S_n = -gradient[k[1],k[0]].copy()
+    for index in range(V_trunc.shape[0] - 1):
+        next_node = V_trunc[index + 1]
+        k_next = get_all_states(next_node, gradient.shape[0],gradient.shape[1])
+        S_n_1 = -gradient[k_next[1],k_next[0]].copy()
+        new_states_n = []
+        state_indexes = []
+        for next_state_index in range(k_next[0].shape[0]):
+            diff_0 = k[0] - k_next[0][next_state_index]
+            diff_1 = k[1] - k_next[1][next_state_index]
+            P = alpha * (diff_0 ** 2 + diff_1 ** 2)
+            S_n_plus_P = S_n + P
+            # print("S = ",S_n)
+            # print("P = " ,P)
+            # print("Sn plus p = ", S_n_plus_P)
+            edge_index = S_n_plus_P.argmin()
+            S_n_1[next_state_index] += S_n_plus_P[edge_index]
+            new_states_n.append((k[0][edge_index], k[1][edge_index]))
+            state_indexes.append(edge_index)
+
+        all_transitions.append(new_states_n)
+        all_transition_indexes.append(state_indexes)
+        S_n = S_n_1
+        k = k_next
+    edge_index = S_n.argmin()
+    minimum_transitions = []
+    last_state = (k[0][edge_index], k[1][edge_index])
+    minimum_transitions.append(last_state)
+    all_transition_indexes = all_transition_indexes[::-1]
+    for index, transitions in enumerate(all_transitions[::-1]):
+        edge_index = all_transition_indexes[index][edge_index]
+        minimum_transitions.append(transitions[edge_index])
+
+    for idx, node in enumerate(V_trunc[::-1]):
+        node[0] = minimum_transitions[idx][0]
+        node[1] = minimum_transitions[idx][1]
+
 
 # ------------------------
 
@@ -68,12 +166,24 @@ def run(fpath, radius):
     # ------------------------
     # your implementation here
 
+    ALPHA = 15
+    gradient = get_gradient_magnitude(Im).astype(np.float32)
+    display_image("gradient",gradient)
+    # print(V)
+    V_trunc = V
+    snake_optimisation(V_trunc,gradient,ALPHA)
     # ------------------------
 
     for t in range(n_steps):
+        # print("V = ",V)
         # ------------------------
         # your implementation here
-
+        # random_pos = np.random.randint(V.shape[0])
+        random_pos = (t+1)%V.shape[0]
+        rolled_V = np.roll(V,random_pos)
+        V_trunc = rolled_V
+        snake_optimisation(V_trunc,gradient,ALPHA)
+        V = np.roll(rolled_V,-random_pos)
         # ------------------------
 
         ax.clear()
@@ -87,4 +197,4 @@ def run(fpath, radius):
 
 if __name__ == '__main__':
     run('images/ball.png', radius=120)
-    run('images/coffee.png', radius=100)
+    run('images/coffee.png', radius=99)
