@@ -1,4 +1,4 @@
-# Assignment 4 on basics of ML
+# Exercise 04 for MA-INF 2201 Computer Vision WS19/20
 
 ## **Team Members**
 
