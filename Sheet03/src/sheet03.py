@@ -90,8 +90,7 @@ def task_1_b():
         cv.line(img, (x1, y1), (x2, y2), (0, 255, 0), 1)
 
     display_image("1 - Hough transform Own implementation", img)
-    accumulator = (255*(accumulator - accumulator.min())/(accumulator.max() - accumulator.min())).astype(np.uint8)
-    display_image("1 - Accumulator",accumulator)
+
 
 ##############################################
 #     Task 2        ##########################
@@ -187,13 +186,13 @@ def task_2():
     edges = cv.Canny(img_gray, 50, 150)  # detect the edges
     theta_res = 2 # set the resolution of theta
     d_res = 1 # set the distance resolution
-    detected_lines, accumulator = myHoughLines(edges, d_res, theta_res, 30)
+    detected_lines, accumulator = myHoughLines(edges, d_res, theta_res, 50)
     centers = mean_shift(accumulator)
     centers = np.array([[c.position[0], c.position[1]] for c in centers])
     detected_lines_ = centers.max()
     for theta, rho in detected_lines:
-        a = np.cos(theta/2)
-        b = np.sin(theta/2)
+        a = np.cos(theta / 2)
+        b = np.sin(theta / 2)
         x0 = a * rho
         y0 = b * rho
         x1 = int(x0 + 1000 * (-b))
@@ -204,9 +203,8 @@ def task_2():
         cv.line(img, (x1, y1), (x2, y2), (0, 255, 0), 1)
 
     display_image("2 - Peaks using mean shift algorithm", img)
-    accumulator = (255*(accumulator - accumulator.min())/(accumulator.max() - accumulator.min())).astype(np.uint8)
+    accumulator = (255 * (accumulator - accumulator.min()) / (accumulator.max() - accumulator.min())).astype(np.uint8)
     display_image("Accumulator with detected lines", accumulator)
-
 
 
 ##############################################
@@ -237,6 +235,7 @@ def myKmeans(data, k):
         # ...
         distances = np.empty((data.shape[0],k))
         for cluster_ind in range(k):
+            print(centers[cluster_ind])
             distances[:,cluster_ind] =  np.linalg.norm(data - centers[cluster_ind],axis=1)
 
         # update clusters' centers and check for convergence
@@ -377,11 +376,11 @@ def task_4_a():
 ##############################################
 
 if __name__ == "__main__":
-    task_1_a()
-    task_1_b()
+    #task_1_a()
+    #task_1_b()
     task_2()
-    task_3_a()
-    task_3_b()
-    task_3_c()
-    task_4_a()
+    #task_3_a()
+    #task_3_b()
+    #task_3_c()
+    #task_4_a()
 
