@@ -60,7 +60,7 @@ def display_image(window_name, img):
     cv2.destroyAllWindows()
 
 
-def get_derivative_of_gaussian_kernel(size=5, sigma=0.6):
+def get_derivative_of_gaussian_kernel(size=5, sigma=3):
     kernel = cv2.getGaussianKernel(size, sigma, )
     kernel_x = kernel * kernel.T
     kernel_y = kernel_x.copy()
@@ -86,18 +86,8 @@ def get_gradient_magnitude(image):
 
 
 def get_all_states(node,max_row,max_col):
-    post_x,post_y,pre_x,pre_y = 1,1,1,1
-    if node[0] == 0:
-        pre_x = 0
-    elif node[0]>=max_row-1:
-        post_x = 0
-    if node[1] == 0:
-        pre_y = 0
-    elif node[1] >= max_col-1:
-        post_y = 0
-
-    one_d_states_x = np.linspace(node[0] - pre_x, node[0] + post_x, 3, dtype=np.int32)
-    one_d_states_y = np.linspace(node[1] - pre_y, node[1] + post_y, 3, dtype=np.int32)
+    one_d_states_x = np.linspace(node[0] - 1, node[0] + 1, 3, dtype=np.int32)
+    one_d_states_y = np.linspace(node[1] - 1, node[1] + 1, 3, dtype=np.int32)
     k = np.meshgrid( one_d_states_x,one_d_states_y)
     k[0] = k[0].flatten()
     k[1] = k[1].flatten()
@@ -111,6 +101,7 @@ def snake_optimisation(V_trunc, gradient, alpha):
     node = V_trunc[0]
     k = get_all_states(node,gradient.shape[0],gradient.shape[1])
     S_n = -gradient[k[1],k[0]].copy()
+
     for index in range(V_trunc.shape[0] - 1):
         next_node = V_trunc[index + 1]
         k_next = get_all_states(next_node, gradient.shape[0],gradient.shape[1])
@@ -122,9 +113,6 @@ def snake_optimisation(V_trunc, gradient, alpha):
             diff_1 = k[1] - k_next[1][next_state_index]
             P = alpha * (diff_0 ** 2 + diff_1 ** 2)
             S_n_plus_P = S_n + P
-            # print("S = ",S_n)
-            # print("P = " ,P)
-            # print("Sn plus p = ", S_n_plus_P)
             edge_index = S_n_plus_P.argmin()
             S_n_1[next_state_index] += S_n_plus_P[edge_index]
             new_states_n.append((k[0][edge_index], k[1][edge_index]))
@@ -166,10 +154,9 @@ def run(fpath, radius):
     # ------------------------
     # your implementation here
 
-    ALPHA = 15
+    ALPHA = 0.1
     gradient = get_gradient_magnitude(Im).astype(np.float32)
     display_image("gradient",gradient)
-    # print(V)
     V_trunc = V
     snake_optimisation(V_trunc,gradient,ALPHA)
     # ------------------------
@@ -178,12 +165,11 @@ def run(fpath, radius):
         # print("V = ",V)
         # ------------------------
         # your implementation here
-        # random_pos = np.random.randint(V.shape[0])
-        random_pos = (t+1)%V.shape[0]
-        rolled_V = np.roll(V,random_pos)
+        random_pos = np.random.randint(V.shape[0])
+        rolled_V = np.roll(V,random_pos,axis=0)
         V_trunc = rolled_V
         snake_optimisation(V_trunc,gradient,ALPHA)
-        V = np.roll(rolled_V,-random_pos)
+        V = np.roll(rolled_V,-random_pos,axis=0)
         # ------------------------
 
         ax.clear()
@@ -197,4 +183,4 @@ def run(fpath, radius):
 
 if __name__ == '__main__':
     run('images/ball.png', radius=120)
-    run('images/coffee.png', radius=99)
+    run('images/coffee.png', radius=100)
