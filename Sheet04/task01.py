@@ -73,9 +73,6 @@ def get_derivative_of_gaussian_kernel(size=5, sigma=3):
 
 
 def get_gradient_magnitude(image):
-    # sobelx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=5)
-    # sobely = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=5)
-    # magnitude = sobelx**2 + sobely**2
     kernel_x, kernel_y = get_derivative_of_gaussian_kernel(5, 0.6)
 
     edges_x = cv2.filter2D(image, -1, kernel_x).astype(np.int32) # convolve with kernel_x
@@ -156,7 +153,7 @@ def run(fpath, radius):
 
     ALPHA = 0.1
     gradient = get_gradient_magnitude(Im).astype(np.float32)
-    display_image("gradient",gradient)
+    # display_image("gradient",gradient)
     V_trunc = V
     snake_optimisation(V_trunc,gradient,ALPHA)
     # ------------------------
