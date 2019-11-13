@@ -69,10 +69,9 @@ def getSeondDerivative(phi):
                 x = i + 1
             if i >= height - 1:
                 x = i - 1
-            phi_xx[x, y] = phi_xx[x + 1, y] - 2 * phi_xx[x, y] + phi_xx[x - 1, y]
-            phi_yy[x, y] = phi_yy[x, y + 1] - 2 * phi_yy[x, y] + phi_yy[x, y - 1]
-            phi_xy[x, y] = (phi_xy[x + 1, y + 1] - phi_xy[x + 1, y - 1] - phi_xy[x - 1, y + 1] + phi_xy[
-                x - 1, y - 1]) * 1. / 4.
+            phi_xx[x, y] = phi[x + 1, y] - 2 * phi[x, y] + phi[x - 1, y]
+            phi_yy[x, y] = phi[x, y + 1] - 2 * phi[x, y] + phi[x, y - 1]
+            phi_xy[x, y] = (phi[x + 1, y + 1] - phi[x + 1, y - 1] - phi[x - 1, y + 1] + phi[x - 1, y - 1]) * 1. / 4.
     return phi_xx.astype(np.float64), phi_yy.astype(np.float64), phi_xy.astype(np.float64)
 
 
@@ -116,7 +115,6 @@ if __name__ == '__main__':
 
     n_steps = 20000
     plot_every_n_step = 1
-    #np.seterr(all='ignore')
     Im, phi = load_data()
     fig = plt.figure(figsize=(16, 8))
     ax1 = fig.add_subplot(121)
@@ -125,7 +123,7 @@ if __name__ == '__main__':
     # ------------------------
     # your implementation here
     image_gradient = cv2.Laplacian(Im.astype(np.uint8), cv2.CV_64F)
-    w = 1. / (np.abs(image_gradient) +  1.)
+    w = 1. / (np.abs(image_gradient)+  1.)
     w_x = np.gradient(w, axis=0)
 
     w_y = np.gradient(w, axis=1)
@@ -136,7 +134,9 @@ if __name__ == '__main__':
 
         # ------------------------
         # your implementation here
-
+        dphi = eta * w * meanCurvatureMotion(phi) - frontPropagation(phi, np.amax(w_x), np.amax(w_y))
+        phi += dphi
+        print(phi)
         # ------------------------
 
         if t % plot_every_n_step == 0:
@@ -146,12 +146,13 @@ if __name__ == '__main__':
 
             contour = get_contour(phi)
             if len(contour) > 0:
+                #print(len(contour))
                 ax1.scatter(contour[:, 0], contour[:, 1], color='red', s=1)
 
             ax2.clear()
             ax2.imshow(phi)
             ax2.set_title(r'$\phi$', fontsize=22)
             plt.pause(0.01)
-        dphi = eta * w * meanCurvatureMotion(phi) + frontPropagation(phi, np.amax(w_x), np.amax(w_y))
-        phi += dphi
-        plt.show()
+    #plt.show()
+
+
