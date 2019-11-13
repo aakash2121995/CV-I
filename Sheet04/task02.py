@@ -31,7 +31,7 @@ def load_data():
     Y, X = np.ogrid[:height, :width]
     phi = radius - np.sqrt((X - centre[0]) ** 2 + (Y - centre[1]) ** 2)
 
-    return Im, phi
+    return Im, phi.astype(np.float64)
 
 
 def get_contour(phi):
@@ -57,61 +57,56 @@ def getSeondDerivative(phi):
     phi_xx = phi.copy()
     phi_yy = phi.copy()
     phi_xy = phi.copy()
-    for i, j in zip(range(height), range(width)):
-        x = i
+    for j in range(width):
         y = j
-        if i == 0:
-            x = i + 1
-            #phi_xx[i, j] = phi_xx[i + 2, j] - 2 * phi_xx[i+1, j] + phi_xx[i, j]
         if j == 0:
             y = j + 1
-            #phi_yy[i, j] = phi_yy[i, j + 2] - 2 * phi_yy[i, j+1] + phi_yy[i, j]
-
-        if i >= height - 1:
-            x = i - 1
-            #phi_xx[i, j] = phi_xx[i, j] - 2 * phi_xx[i-1, j] + phi_xx[i-2, j]
         if j >= width - 1:
             y = j - 1
-            #phi_yy[i, j] = phi_yy[i, j] - 2 * phi_yy[i, j - 1] + phi_yy[i, j - 2]
-
-        '''phi_xx[i, j] = phi_xx[i+1, j] - 2*phi_xx[i, j] + phi_xx[i-1, j]
-        phi_yy[i, j] = phi_yy[i, j+1] - 2*phi_yy[i, j] + phi_yy[i, j-1]
-        phi_xy[i, j] = (phi_xy[i+1, j+1] - phi_xy[i+1, j-1] - phi_xy[i-1, j+1] + phi_xy[i-1, j-1]) * 1./4.'''
-        phi_xx[x, y] = phi_xx[x+1, y] - 2 * phi_xx[x, y] + phi_xx[x - 1, y]
-        phi_yy[x, y] = phi_yy[x, y + 1] - 2 * phi_yy[x, y] + phi_yy[x, y - 1]
-        phi_xy[x, y] = (phi_xy[x + 1, y + 1] - phi_xy[x + 1, y - 1] - phi_xy[x - 1, y + 1] + phi_xy[
-            x - 1, y - 1]) * 1. / 4.
-    return phi_xx, phi_yy, phi_xy
+        for i in range(height):
+            x = i
+            if i == 0:
+                x = i + 1
+            if i >= height - 1:
+                x = i - 1
+            phi_xx[x, y] = phi_xx[x + 1, y] - 2 * phi_xx[x, y] + phi_xx[x - 1, y]
+            phi_yy[x, y] = phi_yy[x, y + 1] - 2 * phi_yy[x, y] + phi_yy[x, y - 1]
+            phi_xy[x, y] = (phi_xy[x + 1, y + 1] - phi_xy[x + 1, y - 1] - phi_xy[x - 1, y + 1] + phi_xy[
+                x - 1, y - 1]) * 1. / 4.
+    return phi_xx.astype(np.float64), phi_yy.astype(np.float64), phi_xy.astype(np.float64)
 
 
 # FUNCTIONS
 # ------------------------
 # your implementation here
 def meanCurvatureMotion(phi):
-    phi_x = np.gradient(phi, axis=0)
-    phi_y = np.gradient(phi, axis=1)
+    phi_x = np.array(np.gradient(phi, axis=0), dtype=np.float64)
+    phi_y = np.array(np.gradient(phi, axis=1), dtype=np.float64)
     epsilon = 1e-4
     phi_xx, phi_yy, phi_xy = getSeondDerivative(phi)
-    result = phi_xx*np.square(phi_y) - 2*phi_x*phi_y*phi_xy + phi_yy*np.square(phi_x)
-    return result / (np.square(phi_y) + np.square(phi_x) + epsilon)
+    phi_x_sqr = np.square(phi_x)
+    phi_y_sqr = np.square(phi_y)
+    result = phi_xx*phi_y_sqr.astype(np.float64) - 2*phi_x*phi_y*phi_xy + phi_yy*phi_x_sqr.astype(np.float64)
+    return result / (phi_x_sqr.astype(np.float64) + phi_y_sqr.astype(np.float64) + epsilon)
 
 
 def frontPropagation(phi, w_x, w_y):
     height, width = phi.shape
     dphi = np.zeros(phi.shape)
-    for i, j in zip(range(phi.shape[0]), range(phi.shape[1])):
-        x = i
+    for j in range(width):
         y = j
-        if i == 0:
-            x = i + 1
         if j == 0:
             y = j + 1
-        if i >= height - 1:
-            x = i - 1
         if j >= width - 1:
             y = j - 1
-        dphi[x, y] = max(w_x[x, y], 0)*(phi[x+1, y] - phi[x, y]) + min(w_x[x, y], 0)*(phi[x, y] - phi[x - 1, y])\
-                     + max(w_y[x, y], 0)*(phi[x, y+1] - phi[x, y]) + min(w_x[x, y], 0)*(phi[x, y] - phi[x, y - 1])
+        for i in range(height):
+            x = i
+            if i == 0:
+                x = i + 1
+            if i >= height - 1:
+                x = i - 1
+            dphi[x, y] = max(w_x, 0)*(phi[x+1, y] - phi[x, y]) + min(w_x, 0)*(phi[x, y] - phi[x - 1, y])\
+                     + max(w_y, 0)*(phi[x, y+1] - phi[x, y]) + min(w_x, 0)*(phi[x, y] - phi[x, y - 1])
     return dphi
 # ------------------------
 
@@ -120,8 +115,8 @@ def frontPropagation(phi, w_x, w_y):
 if __name__ == '__main__':
 
     n_steps = 20000
-    plot_every_n_step = 10
-
+    plot_every_n_step = 1
+    #np.seterr(all='ignore')
     Im, phi = load_data()
     fig = plt.figure(figsize=(16, 8))
     ax1 = fig.add_subplot(121)
@@ -134,15 +129,14 @@ if __name__ == '__main__':
     w_x = np.gradient(w, axis=0)
 
     w_y = np.gradient(w, axis=1)
-    max_w = np.max(w)
-    eta = 1. / 4 * max_w
+    eta = 1. / 4. * np.amax(w)
     # ------------------------
 
     for t in range(n_steps):
 
         # ------------------------
         # your implementation here
-        dphi = eta * w * meanCurvatureMotion(phi) + frontPropagation(phi, w_x, w_y)
+
         # ------------------------
 
         if t % plot_every_n_step == 0:
@@ -158,5 +152,6 @@ if __name__ == '__main__':
             ax2.imshow(phi)
             ax2.set_title(r'$\phi$', fontsize=22)
             plt.pause(0.01)
+        dphi = eta * w * meanCurvatureMotion(phi) + frontPropagation(phi, np.amax(w_x), np.amax(w_y))
         phi += dphi
         plt.show()
