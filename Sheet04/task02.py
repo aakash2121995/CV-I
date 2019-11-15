@@ -105,7 +105,9 @@ def meanCurvatureMotion(phi):
     phi_x = np.array(np.gradient(phi, axis=0), dtype=np.float64)
     phi_y = np.array(np.gradient(phi, axis=1), dtype=np.float64)
     epsilon = 1e-4
-    phi_xx, phi_yy, phi_xy = getSeondDerivative(phi)
+    phi_xx = np.array(np.gradient(phi_x, axis=0), dtype=np.float64)
+    phi_yy = np.array(np.gradient(phi_y, axis=1), dtype=np.float64)
+    phi_xy = np.array(np.gradient(phi_x, axis=1), dtype=np.float64)
     phi_x_sqr = np.square(phi_x)
     phi_y_sqr = np.square(phi_y)
     result = phi_xx*phi_y_sqr.astype(np.float64) + phi_yy*phi_x_sqr.astype(np.float64) - (2*phi_x*phi_y*phi_xy)
@@ -113,13 +115,24 @@ def meanCurvatureMotion(phi):
 
 
 def frontPropagation(phi, w_x, w_y):
-    height, width = phi.shape
+    '''height, width = phi.shape
     dphi = np.zeros(phi.shape, dtype=np.float64)
+    w_x_max = np.amax(w_x)
+    w_y_max = np.amax(w_y)
+    w_x_min = np.amin(w_x)
+    w_y_min = np.amin(w_y)
     for j in range(width):
         for i in range(height):
             x, y = resolve_index(i, j, height, width)
-            dphi[x, y] = max(w_x, 0)*(phi[x+1, y] - phi[x, y]) + min(w_x, 0)*(phi[x, y] - phi[x - 1, y])\
-                     + max(w_y, 0)*(phi[x, y+1] - phi[x, y]) + min(w_x, 0)*(phi[x, y] - phi[x, y - 1])
+            dphi[x, y] = max(w_x, 0)*(phi[x+1, y] - phi[x, y]) + min(w_x_min, 0)*(phi[x, y] - phi[x - 1, y])\
+                     + max(w_y, 0)*(phi[x, y+1] - phi[x, y]) + min(w_y_min, 0)*(phi[x, y] - phi[x, y - 1])'''
+    #phi_x_forward = np.pad(phi[:, :-1], (1), 'constant')[1:-1, :-1]
+    #phi_y_forward = np.pad(phi[:, :-1], (1), 'constant')[1:-1, :-1]
+    #phi_x_forward = np.diff(phi_x_forward)
+    #phi_y_forward = phi - phi_y_forward
+    phi_x = np.array(np.gradient(phi, axis=0), dtype=np.float64)
+    phi_y = np.array(np.gradient(phi, axis=1), dtype=np.float64)
+    dphi = np.maximum(w_x, 0)*phi_x + np.minimum(w_x, 0)*phi_x + np.maximum(w_y, 0)*phi_y + np.minimum(w_y, 0)*phi_y
     return dphi
 # ------------------------
 
@@ -137,18 +150,17 @@ if __name__ == '__main__':
     # ------------------------
     # your implementation here
     image_gradient = get_gradient_magnitude(Im).astype(np.float64)
-    w = 1. / (image_gradient +  1.)
+    w = 1. / (np.sqrt(image_gradient) +  1.)
     w_x = np.gradient(w, axis=0)
     w_y = np.gradient(w, axis=1)
     tau = 1. / 4. * np.amax(w)
     # ------------------------
-    w_x_max = np.amax(w_x)
-    w_y_max = np.amax(w_y)
+
     for t in range(n_steps):
 
         # ------------------------
         # your implementation here
-        dphi =  w * meanCurvatureMotion(phi) + frontPropagation(phi, w_x_max, w_y_max)
+        dphi =  w * meanCurvatureMotion(phi) + frontPropagation(phi, w_x, w_y)
         phi +=  tau * dphi
         #print(phi)
         # ------------------------
@@ -167,6 +179,8 @@ if __name__ == '__main__':
             ax2.imshow(phi)
             ax2.set_title(r'$\phi$', fontsize=22)
             plt.pause(0.01)
+            #phi = contour
+            #phi = contour
     #plt.show()
 
 
