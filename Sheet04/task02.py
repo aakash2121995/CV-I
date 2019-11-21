@@ -81,14 +81,12 @@ def forwardDifference(phi, phi_y=None):
         phi_y_forward = phi.copy()
     else:
         phi_y_forward = phi_y.copy()
-    diff_x = np.diff(phi, axis=0)
-
-    phi_x_forward[1:] = diff_x
-    phi_x_forward[:-1] = 0
-    diff_y = np.diff(phi_y_forward, axis=1)
-    phi_y_forward[:, 1:] = diff_y
-    phi_y_forward[:, :1] = 0
-
+    diff_x = np.diff(phi, axis=1)
+    diff_y = np.diff(phi_y_forward, axis=0)
+    phi_x_forward[:, :-1] = diff_x
+    phi_x_forward[:, -1] = 0
+    phi_y_forward[1:] = diff_y
+    phi_y_forward[:1] = 0
     return phi_x_forward, phi_y_forward
 
 def backwardDifference(phi):
