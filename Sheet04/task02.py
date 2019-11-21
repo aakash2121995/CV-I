@@ -142,5 +142,3 @@ if __name__ == '__main__':
             ax2.set_title(r'$\phi$', fontsize=22)
             plt.pause(0.01)
     plt.show()
-
-
