@@ -2,6 +2,12 @@ import cv2
 import numpy as np
 import maxflow
 
+def potts_cost(wm, wn):
+    delta = 0
+    if wm != wn:
+        delta = 1
+    return delta
+
 def question_3(I,rho=0.7,pairwise_cost_same=0.005,pairwise_cost_diff=0.2):
 
 
@@ -48,29 +54,73 @@ def question_3(I,rho=0.7,pairwise_cost_same=0.005,pairwise_cost_diff=0.2):
     cv2.imshow('Denoised Img', Denoised_I), cv2.waitKey(0), cv2.destroyAllWindows()
     return
 
-def question_4(I,rho=0.6):
-
+def question_4(I, rho=0.6):
+    infinite_cost = 1e15
     labels = np.unique(I).tolist()
-
     Denoised_I = np.zeros_like(I)
+    label_indices = np.array([labels, np.roll(labels, -1), np.roll(labels, 1)])
     ### Use Alpha expansion binary image for each label
+    for i in range(len(labels)):
+        ### 1) Define Graph
+        g = maxflow.Graph[float]()
 
-    ### 1) Define Graph
+        ### 2) Add pixels as nodes
+        nodes = g.add_grid_nodes(I.shape)
 
-    ### 2) Add pixels as nodes
+        ### 3) Compute Unary cost
+        unaryCost = np.ones_like(I)*(1 - rho)/2
+        unaryCost[I == labels[i]] = rho
+        ### define the labels
+        alpha = label_indices[i, 0]
+        beta = label_indices[i, 1]
+        gamma = label_indices[i, 2]
 
-    ### 3) Compute Unary cost
+        ### 4) Add terminal edges
+        g.add_grid_tedges(nodes, unaryCost, 1 - unaryCost)
 
-    ### 4) Add terminal edges
+        ### 5) Add Node edges
+        ### Vertical Edges
+        for x in range(I.shape[0]-1):
+            for y in range(I.shape[1]):
+                if I[x, y] == alpha and I[x+1, y] == alpha:
+                    unaryCost[x, y] = rho
+                elif I[x, y] == alpha and I[x+1, y] == beta:
+                    pairwiseCost = potts_cost(alpha, beta)
+                    g.add_edge(nodes[x, y], nodes[x+1, y], pairwiseCost, pairwiseCost)
+                elif I[x, y] == beta and I[x+1, y] == beta:
+                    pairwiseCost = potts_cost(alpha, beta)
+                    g.add_edge(nodes[x, y], nodes[x+1, y], pairwiseCost, pairwiseCost)
+                elif I[x, y] == beta and I[x+1, y] == gamma:
+                    new_node = g.add_nodes(1)[0]
+                    pairwiseCost = potts_cost(gamma, beta)
+                    g.add_edge(nodes[x, y], new_node, pairwiseCost, infinite_cost)
+                    g.add_edge(new_node, nodes[x+1, y], pairwiseCost, infinite_cost)
+                    g.add_tedge(new_node, 0, infinite_cost)
 
-    ### 5) Add Node edges
-    ### Vertical Edges
+        ### Horizontal edges
+        for x in range(I.shape[0]):
+            for y in range(I.shape[1] - 1):
+                if I[x, y] == alpha and I[x, y+1] == alpha:
+                    unaryCost[x, y] = rho
+                elif I[x, y] == alpha and I[x, y+1] == beta:
+                    pairwiseCost = potts_cost(alpha, beta)
+                    g.add_edge(nodes[x, y], nodes[x, y+1], pairwiseCost, pairwiseCost)
 
-    ### Horizontal edges
-    # (Keep in mind the stucture of neighbourhood and set the weights according to the pairwise potential)
+                elif I[x, y] == beta and I[x, y+1] == beta:
+                    pairwiseCost = potts_cost(alpha, beta)
+                    g.add_edge(nodes[x, y], nodes[x, y+1], pairwiseCost, pairwiseCost)
+                elif I[x, y] == beta and I[x, y+1] == gamma:
+                    new_node = g.add_nodes(1)[0]
+                    pairwiseCost = potts_cost(gamma, beta)
+                    g.add_edge(nodes[x, y], new_node, pairwiseCost, infinite_cost)
+                    g.add_edge(new_node, nodes[x, y+1], pairwiseCost, infinite_cost)
+                    g.add_tedge(new_node, 0, infinite_cost)
 
-    ### 6) Maxflow
 
+        ### 6) Maxflow
+        g.maxflow()
+        segmentedGraph = g.get_grid_segments(nodes)
+        Denoised_I[segmentedGraph==False] = alpha
 
     cv2.imshow('Original Img', I), \
     cv2.imshow('Denoised Img', Denoised_I), cv2.waitKey(0), cv2.destroyAllWindows()
@@ -82,9 +132,9 @@ def main():
     image_q4 = cv2.imread('./images/noise2.png', cv2.IMREAD_GRAYSCALE)
 
     ### Call solution for question 3
-    question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.2)
-    question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.35)
-    question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.55)
+    #question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.2)
+    #question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.35)
+    #question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.55)
 
     ### Call solution for question 4
     question_4(image_q4, rho=0.8)
