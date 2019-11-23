@@ -1,16 +1,21 @@
 import cv2
 import numpy as np
 import maxflow
+import matplotlib.pyplot as plt
 
 def potts_cost(wm, wn):
+    '''
+    Pairwise cost by Potts Model
+    :param wm: Label1
+    :param wn: Label2
+    :return: Pairwise cost
+    '''
     delta = 0
     if wm != wn:
         delta = 1
     return delta
 
 def question_3(I,rho=0.7,pairwise_cost_same=0.005,pairwise_cost_diff=0.2):
-
-
     ### 1) Define Graph
     g = maxflow.Graph[float]()
     binary_img = I.copy()/255
@@ -55,10 +60,18 @@ def question_3(I,rho=0.7,pairwise_cost_same=0.005,pairwise_cost_diff=0.2):
     return
 
 def question_4(I, rho=0.6):
+    '''
+    displays denoised image after Alpha expansion for each label
+    :param I: Original Image
+    :param rho: Bernoulli Parameter
+    :return:
+    '''
     infinite_cost = 1e15
     labels = np.unique(I).tolist()
     Denoised_I = np.zeros_like(I)
+
     label_indices = np.array([labels, np.roll(labels, -1), np.roll(labels, 1)])
+
     ### Use Alpha expansion binary image for each label
     for i in range(len(labels)):
         ### 1) Define Graph
@@ -125,6 +138,12 @@ def question_4(I, rho=0.6):
     cv2.imshow('Original Img', I), \
     cv2.imshow('Denoised Img', Denoised_I), cv2.waitKey(0), cv2.destroyAllWindows()
 
+    f, axarr = plt.subplots(1, 2, sharey=True)
+    axarr[0].imshow(I, cmap='gray')
+    axarr[0].set_title('Original Image')
+    axarr[1].imshow(Denoised_I, cmap='gray')
+    axarr[1].set_title('Denoised Image')
+    plt.show()
     return
 
 def main():
@@ -132,9 +151,9 @@ def main():
     image_q4 = cv2.imread('./images/noise2.png', cv2.IMREAD_GRAYSCALE)
 
     ### Call solution for question 3
-    #question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.2)
-    #question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.35)
-    #question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.55)
+    # question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.2)
+    # question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.35)
+    # question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.55)
 
     ### Call solution for question 4
     question_4(image_q4, rho=0.8)
