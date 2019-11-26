@@ -155,9 +155,9 @@ def main():
     image_q4 = cv2.imread('./images/noise2.png', cv2.IMREAD_GRAYSCALE)
 
     ### Call solution for question 3
-    #question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.2)
-    #question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.35)
-    #question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.55)
+    question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.2)
+    question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.35)
+    question_3(image_q3, rho=0.7, pairwise_cost_same=0.005, pairwise_cost_diff=0.55)
 
     ### Call solution for question 4
     question_4(image_q4, rho=0.8)
