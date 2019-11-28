@@ -1,35 +1,74 @@
 import numpy as np
+from scipy.linalg import block_diag
 import matplotlib.pylab as plt
 
 observations = np.load('observations.npy')
 
+dt = 0.5
+I = np.diag([1., 1., 1., 1.])
+O = np.diag([0., 0., 0., 0.])
 
 def get_observation(t):
     return observations[t]
 
+def get_lagged_psi(tau, psi, phi):
+    _I = []
+    _psi = np.hstack([O]*tau)
+    psi_tau = np.hstack([psi, _psi])
+    O2 = np.array([[0., 0., 0., 0.], [0., 0., 0., 0.]])
+    _phi = np.hstack([O2] * 5)
+    phi_tau = np.hstack([phi, _phi])
+    for i in range(tau+1):
+        _I.append(I)
+    _I = np.array(_I).reshape(tau+1, 4, 4)
+    I_tau = block_diag(*_I)
+    return  np.vstack([psi_tau, I_tau])[:-4], phi_tau
 
 class KalmanFilter(object):
     def __init__(self, psi, sigma_p, phi, sigma_m, tau):
-        self.psi = psi
-        self.sigma_p = sigma_p
-        self.phi = phi
-        self.sigma_m = sigma_m
+        self.psi = psi          #F
+        self.sigma_p = sigma_p  #Q
+        self.phi = phi          #H
+        self.sigma_m = sigma_m  #R
         self.state = None
-        self.convariance = None
+        self.covariance = None
         self.tau = tau
+        if self.tau != 0:
+            self.xSmooth = []
+            self.lagged_psi, self.lagged_phi = get_lagged_psi(self.tau, self.psi, self.phi)
 
     def init(self, init_state):
-        # self.state =
-        # self.covariance =
-        pass
+        self.state = init_state
+        self.covariance = np.diag([100., 100., 100., 100.])
+        self.time_step = 0
+        self.iter_1 = 0
+        self.iter_2 = 0
 
     def track(self, xt):
-        # to do
-        pass
+        self.state = np.dot(self.psi, self.state)
+        if self.tau != 0:
+            self.xSmooth.append(self.state[:, None])
+        self.covariance = np.dot(self.psi, np.dot(self.covariance, self.psi.T)) + self.sigma_p
+        self.v = np.subtract(xt, np.dot(self.phi, self.state))
+        self.S = np.dot(self.phi, np.dot(self.covariance, self.phi.T)) + self.sigma_m
+        self.K = np.dot(self.covariance, np.dot(self.phi.T, np.linalg.inv(self.S)))
+        self.state = np.add(self.state, np.dot(self.K, self.v))
+        self.covariance = np.dot((I - np.dot(self.K, self.phi)), self.covariance)
+
 
     def get_current_location(self):
-        # to do
-        pass
+        location = np.dot(self.phi, self.state)
+        if self.time_step >= self.tau and self.tau!=0:
+            print(len(self.xSmooth))
+            states = self.xSmooth[-(self.tau+1):]
+            print(len(states))
+            if len(states) == self.tau+1:
+                self.iter_1 += 1
+                states = np.array(states[::-1]).reshape(24, 1)
+                smoothed_state = np.dot(self.lagged_psi, states.reshape(24, 1))
+                location = np.dot(self.lagged_phi, smoothed_state)
+        self.time_step += 1
+        return location
 
 def perform_tracking(tracker):
     track = []
@@ -40,7 +79,7 @@ def perform_tracking(tracker):
     return track
 
 def main():
-    init_state = np.array([1, 0, 0, 0])
+    init_state = np.array([0, 1, 0, 0])
 
     psi = np.array([[1, 0, 1, 0],
                     [0, 1, 0, 1],
@@ -54,7 +93,7 @@ def main():
 
     phi = np.array([[1, 0, 0, 0],
                     [0, 1, 0, 0]])
-    sm = 0.05
+    sm = 20
     sigma_m = np.array([[sm, 0],
                         [0, sm]])
 
@@ -67,12 +106,11 @@ def main():
 
     track = perform_tracking(tracker)
     track_smoothed = perform_tracking(fixed_lag_smoother)
-
     plt.figure()
     plt.plot([x[0] for x in observations], [x[1] for x in observations])
     plt.plot([x[0] for x in track], [x[1] for x in track])
     plt.plot([x[0] for x in track_smoothed], [x[1] for x in track_smoothed])
-
+    plt.legend(['Observations', 'tau = 0', 'tau = 5'], loc='upper left')
     plt.show()
 
 
