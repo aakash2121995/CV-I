@@ -20,7 +20,7 @@ def translate_point(point, t):
     return new_point[:point.shape[0]]
 
 def get_transformation(wn, xn):
-    d = wn.shape[1]
+    '''d = wn.shape[1]
     center_w = np.mean(wn, axis=0)
     center_x = np.mean(xn, axis=0)
     w = wn - center_w
@@ -30,8 +30,15 @@ def get_transformation(wn, xn):
     translation = center_x.T - (rotation @ center_w.T)
     psi = np.identity(d+1)
     psi[:d, :d] = rotation
-    psi[:d, d] = translation
-    return psi
+    psi[:d, d] = translation'''
+      dim = landmarks.shape[0]/2
+      I = np.vstack([np.diag([1., 1.])]*dim)
+      first = np.zeros((landmarks.shape[0]*2, landmarks.shape[1]))
+      first[::2] = landmarks
+      second = np.vstack([[0., 0.], first])[:-1]
+      points = np.hstack([first, second, I])
+      psi = image_points / np.linalg.pinv(points)
+      return psi
 
 
 
