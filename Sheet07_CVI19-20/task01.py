@@ -4,43 +4,48 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rc
 
-def to_homogeneous(A):
-    dim = A.shape[1]
-    new_A = np.ones((dim+1,A.shape[0]))
-    new_A[:dim, :] = np.copy(A.T)
-    return new_A
+dx = np.array([[-1 / 2, 0, 1 / 2]], 'float64')
 
-def from_homogeneous(A):
-    dim = A.shape[0] - 1
-    return A[:dim,:].T
+def get_exponent(x, y, sigma):
+    return -1 * (x * x + y * y) / (2 * sigma)
 
-def translate_point(point, t):
-    translation = np.array([[1., 0., t[0]], [0., 1., t[1]], [0., 0., 1]])
-    new_point = translation @ point
-    return new_point[:point.shape[0]]
+def get_derivative_of_gaussian_kernel(size, sigma):
+    assert size > 0 and size % 2 == 1 and sigma > 0
 
-def get_transformation(wn, xn):
-    '''d = wn.shape[1]
-    center_w = np.mean(wn, axis=0)
-    center_x = np.mean(xn, axis=0)
-    w = wn - center_w
-    x = xn - center_x
-    U, L2, VT = np.linalg.svd(w.T @ x)
-    rotation = U @ VT
-    translation = center_x.T - (rotation @ center_w.T)
-    psi = np.identity(d+1)
-    psi[:d, :d] = rotation
-    psi[:d, d] = translation'''
-      dim = landmarks.shape[0]/2
-      I = np.vstack([np.diag([1., 1.])]*dim)
-      first = np.zeros((landmarks.shape[0]*2, landmarks.shape[1]))
-      first[::2] = landmarks
-      second = np.vstack([[0., 0.], first])[:-1]
-      points = np.hstack([first, second, I])
-      psi = image_points / np.linalg.pinv(points)
-      return psi
+    kernel_x = np.zeros((size, size))
+    kernel_y = np.zeros((size, size))
 
+    size_half = size // 2
 
+    for i in range(size):
+        y = i - size_half
+        for j in range(size):
+            x = j - size_half
+            kernel_x[i, j] = (
+                -1
+                * (x / (2 * np.pi * sigma * sigma))
+                * np.exp(get_exponent(x, y, sigma))
+            )
+            kernel_y[i, j] = (
+                -1
+                * (y / (2 * np.pi * sigma * sigma))
+                * np.exp(get_exponent(x, y, sigma))
+            )
+
+    return kernel_x, kernel_y
+
+def get_transformation(landmarks, image_points):
+    dim = landmarks.shape[0]
+    I = np.vstack([np.diag([1., 1.])]*dim)
+    xn = np.expand_dims(image_points, axis=-1).reshape(image_points.shape[0]*2, 1)
+    #print(xn)
+    first = np.zeros((landmarks.shape[0]*2, landmarks.shape[1]))
+    first[::2] = landmarks
+    second = np.vstack([[0., 0.], first])[:-1]
+    points = np.hstack([first, second, I])
+    #print(points.shape)
+    psi = np.linalg.pinv(points) @ xn
+    return psi, points @ psi
 
 def plot_landmarks(image, landmarks):
     plt.figure()
@@ -59,13 +64,17 @@ for line in lines:
     Y.append(int(line[-1]))
 landmarks = np.column_stack([X, Y])
 image = plt.imread('data/hand.jpg')
+print(image.shape)
 #plot_landmarks(image, landmarks)
 image_blurred = cv2.GaussianBlur(image, ksize=(5, 5), sigmaX=0.0)
 edges = cv2.Canny(image_blurred, 100, 250, 3)
-edges = np.float32(edges) / 255.0
+plt.imshow(edges, cmap="gray")
+plt.show()
+edges = np.float64(edges) / 255.0
 edges[np.where(edges <= 0.7)] = 0.0
 edges[np.where(edges > 0.7)] = 1.0
 #print(edges)
+
 edges = 1 - edges  # this is because of the input of the cv2.distanceTransform.
 #print(edges)
 distance_transformed = cv2.distanceTransform(
@@ -76,24 +85,27 @@ distance_transformed = cv2.distanceTransform(
 #print(distance_transformed)
 epsilon = 0.1
 G = np.gradient(distance_transformed)
-G_x = G[1][Y, X]
-G_y = G[0][Y, X]
+G_x = cv2.filter2D(distance_transformed, -1, dx)[Y, X]
+G_y = cv2.filter2D(distance_transformed, -1, dx.T)[Y, X]
+
 delta = 1
 denominator = np.hypot(G_x, G_y)[:, None]
 Dn = distance_transformed[Y, X][:, None]
 wn_old = landmarks.astype('float64')
-gradient = np.column_stack([G_x, G_y])
+gradient = np.column_stack([G_y, G_x])
 count = 0
 while delta > epsilon:
+    print(count)
     numerator = Dn * gradient
     xn_new = wn_old - numerator/denominator
-    delta = np.amax(wn_old - xn_new)
-    psi = get_transformation(wn_old, xn_new)
-    wn_new = from_homogeneous(psi @ to_homogeneous(wn_old))
+    print(xn_new)
+    plot_landmarks(image, xn_new.astype('int'))
+    psi, wn_new = get_transformation(wn_old, xn_new)
+    wn_new = np.reshape(wn_new, (int(wn_new.shape[0]/2), wn_new.shape[1]*2))
     new_landmark = wn_new.astype('int')
-    Dn = distance_transformed[new_landmark[:, 1], new_landmark[:, 0]][:, None]
-    wn_old = wn_new
-    plot_landmarks(image, wn_new.astype(int))
+    print(new_landmark)
+    Dn = distance_transformed[new_landmark[:, 0], new_landmark[:, 1]][:, None]
+    #plot_landmarks(image, new_landmark)
     count += 1
-    delta = np.mean(Dn)
-
+    delta = np.mean(wn_new - wn_old)
+    wn_old = wn_new
