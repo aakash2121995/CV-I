@@ -10,7 +10,10 @@ def pca(centered_data, threshold=0.1):
     compared = L2_ratio[L2_ratio > 1 - threshold]
     return U, L2, 5
 
-training_data = np.loadtxt('data/hands_aligned_train.txt.new', skiprows=1)
+raw_data = np.loadtxt('data/hands_aligned_train.txt.new', skiprows=1)
+training_data = np.zeros()
+training_data[:, ::2] = x
+training_data[:, 1::2] = y
 image = plt.imread('data/hand.jpg')
 weights = np.array([(-0.4, -0.2, 0.0, 0.2, 0.4)])
 mu = np.mean(training_data, axis=0)
