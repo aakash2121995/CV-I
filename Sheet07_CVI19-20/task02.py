@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rc
-from task01 import ICP, plot_landmarks
+from task01 import ICP, get_transformation, plot_landmarks
 
 def pca(centered_data, threshold=0.1):
     wwt = centered_data @ centered_data.T

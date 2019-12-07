@@ -1,10 +1,25 @@
-import re
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import rc
 
 image = cv2.imread('data/hand.jpg', 0)
+
+
+def get_pixel_locations(landmarks):
+    W = landmarks.T
+    return W[0], W[1]
+
+def get_distance_transformed():
+    '''
+    Calculate the distance transformation of the image
+    :return: distance transformation of the image
+    '''
+    edges = cv2.Canny(image, 40, 80)
+    edges[np.where(edges == 255)] = 1.0
+    edges[np.where(edges == 0)] = 255.0
+    edges[np.where(edges == 1)] = 0.0
+    distance_transformed = cv2.distanceTransform(edges, cv2.DIST_L2, 3).astype(np.uint8)
+    return distance_transformed.astype(np.float32)
 
 def get_transformation(landmarks, image_points):
     '''
@@ -15,14 +30,15 @@ def get_transformation(landmarks, image_points):
     '''
     dim = landmarks.shape[0]
     I = np.vstack([np.diag([1., 1.])]*dim)
-    xn = np.expand_dims(image_points, axis=-1).reshape(image_points.shape[0]*2, 1)
+    xn = np.array([image_points.T[1], image_points.T[0]]).T.flatten()
     first = np.zeros((landmarks.shape[0]*2, landmarks.shape[1]))
-    first[::2] = landmarks
+    first[::2] = np.fliplr(landmarks)
     second = np.vstack([[0., 0.], first])[:-1]
     points = np.hstack([first, second, I])
-    inv_points = np.dot(np.linalg.inv(points.T @ points), points.T)
-    psi = inv_points @ xn
-    return psi, points @ psi
+    psi = np.dot(np.linalg.pinv(points), xn)
+    correspondence = np.reshape(points @ psi, (int(xn.shape[0] / 2), 2))
+    new_landmarks = np.column_stack([correspondence.T[1], correspondence.T[0]]).astype(int)
+    return psi, new_landmarks
 
 def plot_landmarks(landmarks, title, x=None):
     '''
@@ -35,13 +51,13 @@ def plot_landmarks(landmarks, title, x=None):
     plt.figure()
     plt.imshow(image, cmap=plt.cm.gray)
     if x is not None:
-        plt.scatter(x[:, 0], x[:, 1], c='r', s=10)
-    plt.scatter(landmarks[:, 0], landmarks[:, 1], c='y', s=10)
+        plt.scatter(x[:, 1], x[:, 0], c='r', s=10)
+    plt.scatter(landmarks[:, 1], landmarks[:, 0], c='y', s=10)
     plt.grid()
     plt.title(title)
     plt.show()
 
-def ICP(D, W, epsilon=0.1):
+def ICP(W, epsilon=0.001):
     '''
     Try to map the W to the closest point on the edge of the shape
     :param D: distance Transformed image
@@ -49,49 +65,33 @@ def ICP(D, W, epsilon=0.1):
     :param epsilon: covergence threshold
     :return: the final landmark points closest to the shape
     '''
-    G = np.gradient(D)
-    delta = 1
+    D = get_distance_transformed()
+    G_y, G_x = np.gradient(D)
+    delta = False
     wn_old = W
     count = 0
-    while delta > epsilon:
-        print(count)
-        G_x = G[1][wn_old[:, 1], wn_old[:, 0]]
-        G_y = G[0][wn_old[:, 1], wn_old[:, 0]]
-        gradient = np.column_stack([G_y, G_x])
-        Dn = D[wn_old[:, 1], wn_old[:, 0]]
-        denominator = np.hypot(G_y, G_x)[:, None]
-        multipliers = Dn[:, None] / denominator
-        xn_new = wn_old - np.multiply(multipliers, gradient)
-        psi, wn_new = get_transformation(wn_old, xn_new)
-        wn_new = np.reshape(wn_new, (int(wn_new.shape[0] / 2), wn_new.shape[1] * 2))
+    psi_old = None
+    while not delta:
+        X, Y = get_pixel_locations(wn_old)
+        Gx = G_x[X, Y]
+        Gy = G_y[X, Y]
+        gradient = np.column_stack([Gy, Gx])
+        Dn = D[X, Y]
+        denominator = np.hypot(Gy, Gx).reshape(-1, 1)
+        numerator = Dn.reshape(-1, 1) * gradient
+        xn_new = wn_old - np.divide(numerator, denominator, where=denominator != 0)
+        psi, wn_new = get_transformation(wn_old, xn_new.astype('int'))
         plot_landmarks(wn_new.astype('int'), 'Iteration: {}'.format(count+1), xn_new.astype('int'))
         count += 1
-        delta = np.mean(Dn)
         wn_old = wn_new.astype('int')
+        delta = np.array_equal(psi, psi_old)
+        psi_old = psi
     return wn_old
 
-rgx = re.compile('[%s]' % "(,)")
-with open("data/hand_landmarks.txt", "r") as f:
-    lines = f.readlines()
-X, Y = [], []
-for line in lines:
-    line = rgx.sub(' ', line).lstrip().rstrip().split()
-    X.append(int(line[0]))
-    Y.append(int(line[1]))
-landmarks = np.column_stack([X, Y])
-plot_landmarks(landmarks, 'Given Landmarks')
 
-
-image_blurred = cv2.GaussianBlur(image, ksize=(5, 5), sigmaX=0.0)
-edges = cv2.Canny(image_blurred, 60, 150, L2gradient=True)
-edges = np.float64(edges)
-edges = 255.0 - edges  # this is because of the input of the cv2.distanceTransform.
-distance_transformed = cv2.distanceTransform(
-    src=np.uint8(edges),
-    distanceType=cv2.DIST_L2,
-    maskSize=cv2.DIST_MASK_PRECISE,
-)
-plt.imshow(distance_transformed, cmap="gray")
-plt.show()
-new_landmarks = ICP(distance_transformed, landmarks)
+with open("data/hand_landmarks.txt", "r") as file:
+    raw_data = [tuple(map(int, line[1:-2].split(','))) for line in file]
+landmarks_data = np.array(raw_data).T
+landmarks = np.column_stack([landmarks_data[1], landmarks_data[0]])
+new_landmarks = ICP(landmarks)
 
