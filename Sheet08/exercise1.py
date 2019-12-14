@@ -11,6 +11,8 @@ from sklearn.datasets import fetch_lfw_people
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 
+#change mean square error to root_mean_square
+
 def match_labels(labels, y_pred, y_test):
     def get_label(i):
         predicted = labels[y_pred[i]].rsplit(' ', 1)[-1]
@@ -30,7 +32,7 @@ def faceDetection(images, reconstructed_images, filenames, directory_name='faces
 def isFaceDetected(face, reconstructed_face, threshold=0.1):
     isFace = False
     loss = ((face - reconstructed_face) ** 2).mean()
-    if  loss < threshold:
+    if  np.sqrt(loss) < threshold:
         print(threshold, loss)
         isFace = True
     return isFace
