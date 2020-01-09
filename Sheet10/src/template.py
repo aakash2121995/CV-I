@@ -20,6 +20,11 @@ for ptIdx in range(0, board_n):
     obj.append(np.array([[ptIdx/board_w, ptIdx%board_w, 0.0]],np.float32))
 obj = np.vstack(obj)
 
+def display_images(title, images):
+    cv2.imshow(title, images)
+    cv2.waitKey(500)
+    cv2.destroyAllWindows()
+
 def show_images(images, cols=7, rows=2):
     fig = plt.figure(figsize=(50, 50))
     for i in range(NUM_IMAGES):
@@ -49,9 +54,7 @@ def task1(images):
             final_image = cv2.drawChessboardCorners(image, board_size, subpix_corners, retval)
             final_images.append(final_image)
             display = np.hstack((img, final_image))
-            cv2.imshow('original --> With_corners', display)
-            cv2.waitKey(500)
-            cv2.destroyAllWindows()
+            display_images('original --> With_corners', display)
         else:
             print('Chessboard not detected in image ')
     #show_images(final_images)
@@ -62,11 +65,18 @@ def task2(imagePoints, objectPoints, image_shape):
         = cv2.calibrateCamera(objectPoints, imagePoints, image_shape[::-1], None, None)
     return cameraMatrix, distortions, rotation, translation
 
-def task3(imagePoints, objectPoints, CM, D, rvecs, tvecs):
+def task3(images, imagePoints, objectPoints, CM, D, rvecs, tvecs):
     projection_error = 0
-    for i in range(len(objectPoints)):
+    red = [0, 0, 255]
+    green = [0, 255, 0]
+    for i in range(len(images)):
+        image = images[i].copy()
         newImgpoints, _ = cv2.projectPoints(objectPoints[i], rvecs[i], tvecs[i], CM, D)
-        projection_error += cv2.norm(imagePoints[i], newImgpoints, cv2.NORM_L2) / len(newImgpoints)
+        projection_error += cv2.norm(imagePoints[i], newImgpoints, cv2.NORM_L1) / len(newImgpoints)
+        for j in range(newImgpoints.shape[0]):
+            cv2.circle(image, tuple(imagePoints[i][j].reshape(-1)), 5, green)
+            cv2.circle(image, tuple(newImgpoints[j].reshape(-1)), 5, red)
+        display_images('With reprojected points', image)
     projection_error /= len(objectPoints)
     print('Re-projection error: {}'.format(projection_error))
 
@@ -77,9 +87,7 @@ def task4(images, CM, D):
         undistorted = cv2.undistort(image_gray, CM, D, None, None)
         undistorted_images.append(undistorted)
         display = np.hstack((image_gray, undistorted))
-        cv2.imshow('Distorted --> Undistorted', display)
-        cv2.waitKey(500)
-        cv2.destroyAllWindows()
+        display_images('Distorted --> Undistorted', display)
 
 def task5(CM, rvecs, tvecs):
     #implement your solution
@@ -107,7 +115,7 @@ def main():
         print('rotation vector:\n {}'.format(rvecs[i]))
         print('translation vector:\n {}'.format(tvecs[i]))
 
-    task3(imagePoints, objectPoints, CM, D, rvecs, tvecs)  # Calling Task 3
+    task3(images, imagePoints, objectPoints, CM, D, rvecs, tvecs)  # Calling Task 3
 
     task4(images, CM, D) # Calling Task 4
 
